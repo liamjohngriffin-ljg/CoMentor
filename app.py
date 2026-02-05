@@ -27,6 +27,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+st.markdown("### ✅ CoMentor UI VERSION: 2026-02-05  (if you don't see this, Streamlit isn't running your latest code)")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
