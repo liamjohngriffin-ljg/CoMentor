@@ -1,11 +1,14 @@
+````python
 """
 CoMentor - Executive Communication Intelligence
 ================================================
 AI-powered communication analysis for high-stakes conversations
 Record or upload meetings to get actionable insights
 """
+
 from dotenv import load_dotenv
 load_dotenv()
+
 import streamlit as st
 import tempfile
 import os
@@ -14,7 +17,10 @@ from openai import OpenAI
 from datetime import datetime
 import base64
 
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Page configuration
+# ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="CoMentor | Communication Intelligence",
     page_icon="◐",
@@ -22,25 +28,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean landing-page CSS (Grammarly-inspired: minimal, airy, green accent)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Grammarly-like landing CSS (clean, airy, green accent)
+# IMPORTANT: This also overrides many default Streamlit widget styles.
+# ──────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root{
   --bg: #ffffff;
   --text: #0f172a;
   --muted: #475569;
+  --muted2: #64748b;
   --border: #e2e8f0;
   --card: #ffffff;
   --soft: #f8fafc;
   --accent: #22c55e;      /* clean green */
   --accent-dark: #16a34a;
-  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --shadow-sm: 0 6px 18px rgba(15, 23, 42, 0.06);
+  --shadow: 0 14px 40px rgba(15, 23, 42, 0.10);
+  --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.08);
   --radius: 18px;
 }
 
+/* Base */
 .stApp {
   font-family: 'Inter', sans-serif;
   background: var(--bg);
@@ -52,14 +64,14 @@ st.markdown("""
 footer {visibility: hidden;}
 header {visibility: hidden;}
 
-/* Constrain content width like a marketing site */
+/* Make the app feel like a marketing site */
 .block-container{
   max-width: 1120px;
   padding-top: 2.0rem;
   padding-bottom: 4rem;
 }
 
-/* Sidebar: lighter, cleaner */
+/* Sidebar */
 section[data-testid="stSidebar"]{
   background: #fbfdff;
   border-right: 1px solid var(--border);
@@ -72,12 +84,14 @@ section[data-testid="stSidebar"] span {
   color: var(--muted) !important;
 }
 
-/* Inputs */
-.stSelectbox, .stTextInput, .stFileUploader {
-  border-radius: 12px;
+/* Text inputs / selects / uploader */
+div[data-baseweb="input"] input,
+div[data-baseweb="select"] > div,
+div[data-testid="stFileUploader"] section {
+  border-radius: 12px !important;
 }
 
-/* Tabs: minimal pill style */
+/* Tabs: simple pills */
 .stTabs [data-baseweb="tab-list"] {
   gap: 10px;
   background: transparent;
@@ -85,44 +99,33 @@ section[data-testid="stSidebar"] span {
   border-bottom: 1px solid var(--border);
 }
 .stTabs [data-baseweb="tab"] {
-  border-radius: 999px;
+  border-radius: 999px !important;
   padding: 10px 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--muted);
   background: transparent;
 }
 .stTabs [aria-selected="true"] {
-  background: rgba(34, 197, 94, 0.10);
-  color: var(--text);
+  background: rgba(34, 197, 94, 0.10) !important;
+  color: var(--text) !important;
 }
 
-/* Buttons: green primary like Grammarly CTA */
+/* Buttons: green CTA */
 .stButton > button {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 0.85rem 1.25rem;
-  font-size: 1rem;
-  font-weight: 700;
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  background: var(--accent) !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.85rem 1.25rem !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-sm) !important;
   transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
 .stButton > button:hover {
   transform: translateY(-1px);
-  background: var(--accent-dark);
-  box-shadow: var(--shadow);
-}
-
-/* Secondary button look (we’ll use st.button with custom class via markdown) */
-.cm-secondary {
-  display:inline-block;
-  border: 1px solid var(--border);
-  background: white;
-  color: var(--text);
-  padding: 0.85rem 1.25rem;
-  border-radius: 12px;
-  font-weight: 700;
+  background: var(--accent-dark) !important;
+  box-shadow: var(--shadow) !important;
 }
 
 /* Hero */
@@ -145,24 +148,28 @@ section[data-testid="stSidebar"] span {
   gap: 0.75rem;
 }
 .cm-logo {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   background: rgba(34,197,94,0.14);
   display:flex;
   align-items:center;
   justify-content:center;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--accent-dark);
 }
 .cm-brandname {
   font-size: 1.25rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: -0.02em;
+}
+.cm-mini{
+  font-size: 0.90rem;
+  color: var(--muted2);
 }
 .cm-badge {
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--accent-dark);
   background: rgba(34,197,94,0.10);
   border: 1px solid rgba(34,197,94,0.18);
@@ -180,33 +187,25 @@ section[data-testid="stSidebar"] span {
   .cm-hero-grid { grid-template-columns: 1fr; }
 }
 .cm-h1 {
-  font-size: 2.65rem;
-  font-weight: 800;
-  line-height: 1.06;
-  letter-spacing: -0.03em;
+  font-size: 2.75rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
   margin: 0 0 0.75rem 0;
 }
 .cm-sub {
   font-size: 1.1rem;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.7;
   margin: 0 0 1.25rem 0;
-}
-.cm-cta-row {
-  display:flex;
-  gap: 12px;
-  align-items:center;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
 }
 .cm-proof {
   margin-top: 1.0rem;
-  color: #64748b;
-  font-size: 0.95rem;
+  color: var(--muted2);
+  font-size: 0.98rem;
 }
 .cm-proof strong { color: var(--text); }
 
-/* Feature cards */
 .cm-cards {
   margin-top: 1.75rem;
   display:grid;
@@ -221,249 +220,115 @@ section[data-testid="stSidebar"] span {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.15rem 1.15rem;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
 }
 .cm-card-title{
-  font-weight: 800;
+  font-weight: 900;
   margin: 0 0 0.35rem 0;
   letter-spacing: -0.01em;
 }
 .cm-card-text{
   margin: 0;
   color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.6;
   font-size: 0.95rem;
 }
-.cm-mini{
-  font-size: 0.85rem;
-  color: #64748b;
-}
 
-/* Section wrapper */
 .cm-section {
-  margin-top: 1.75rem;
+  margin-top: 1.5rem;
   border: 1px solid var(--border);
   background: white;
   border-radius: var(--radius);
-  padding: 1.5rem 1.5rem;
+  padding: 1.35rem 1.35rem;
   box-shadow: var(--shadow-sm);
 }
 
-/* Keep your report components working, but soften them */
-.ces-container {
-  border-radius: 22px !important;
-  box-shadow: var(--shadow) !important;
+/* Light info strip inside tabs */
+.cm-strip {
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--border);
+  background: var(--soft);
+  border-radius: 16px;
+  margin: 0.5rem 0 1rem 0;
 }
-.subscore-card, .insight-card, .cog-meter {
-  border: 1px solid var(--border) !important;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05) !important;
+.cm-strip h3{
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
-.executive-summary {
-  border-left: 4px solid var(--accent) !important;
+.cm-strip p{
+  margin: 0.5rem 0 0 0;
+  color: var(--muted);
 }
 
-/* Muted divider */
-.cm-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 1.25rem 0;
+/* Soften native report components (your older CSS classes still referenced by report) */
+.ces-container { border-radius: 22px !important; box-shadow: var(--shadow) !important; }
+.subscore-card, .insight-card, .cog-meter {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06) !important;
+}
+.executive-summary { border-left: 4px solid var(--accent) !important; }
+
+/* Existing classes from your original report UI (kept so report still renders) */
+.section-header { display:flex; align-items:center; gap:0.75rem; margin: 2rem 0 1.25rem 0; }
+.section-icon { width:32px; height:32px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+.section-title { font-size:1.25rem; font-weight:800; color:#111827; margin:0; }
+
+.insight-card { background:white; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:0.75rem; display:flex; align-items:flex-start; gap:1rem; }
+.insight-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+.insight-icon-strength { background:#d1fae5; color:#059669; }
+.insight-icon-improve { background:#fef3c7; color:#d97706; }
+.insight-icon-moment { background:#dbeafe; color:#2563eb; }
+.insight-title { font-weight:800; color:#1f2937; margin-bottom:0.25rem; }
+.insight-text { font-size:0.925rem; color:#4b5563; line-height:1.5; }
+
+.executive-summary { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5rem 2rem; border-radius: 0 12px 12px 0; font-size: 1.05rem; line-height: 1.7; color: #334155; }
+
+.cog-meter { background:white; border-radius:12px; padding:1.5rem; }
+.cog-meter-row { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 0; border-bottom:1px solid #f3f4f6; }
+.cog-meter-row:last-child { border-bottom:none; }
+.cog-meter-label { font-size:0.925rem; color:#4b5563; }
+.cog-meter-value { font-weight:800; padding:0.25rem 0.75rem; border-radius:20px; font-size:0.875rem; }
+.cog-low { background:#d1fae5; color:#059669; }
+.cog-medium { background:#fef3c7; color:#d97706; }
+.cog-high { background:#fee2e2; color:#dc2626; }
+
+.transcript-box {
+  background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:1.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size:0.875rem; line-height:1.7; color:#374151; max-height:400px; overflow-y:auto;
+}
+
+.report-footer { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align:center; color:#94a3b8; font-size:0.875rem; }
+
+/* A small "version stamp" style */
+.cm-version {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
 }
 </style>
 """, unsafe_allow_html=True)
 
 
-# Audio recorder JavaScript component
-AUDIO_RECORDER_HTML = """
-<div id="audio-recorder-container" style="text-align: center; padding: 20px;">
-    <div id="status" class="recording-status status-ready">
-        <span>🎙️</span> Ready to record
-    </div>
-    
-    <div id="timer" style="font-size: 2.5rem; font-weight: 600; font-family: monospace; color: #1f2937; margin: 1.5rem 0;">
-        00:00
-    </div>
-    
-    <div style="display: flex; gap: 12px; justify-content: center; margin: 1.5rem 0;">
-        <button id="recordBtn" onclick="toggleRecording()" style="
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-            transition: all 0.3s ease;
-        ">
-            <span id="recordIcon">⏺</span>
-            <span id="recordText">Start Recording</span>
-        </button>
-    </div>
-    
-    <div id="audioPreview" style="display: none; margin-top: 1.5rem;">
-        <audio id="audioPlayback" controls style="width: 100%; max-width: 400px;"></audio>
-        <div style="margin-top: 1rem;">
-            <button onclick="submitAudio()" style="
-                background: linear-gradient(135deg, #059669 0%, #047857 100%);
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                font-size: 1rem;
-                font-weight: 600;
-                border-radius: 10px;
-                cursor: pointer;
-                margin-right: 8px;
-                box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
-            ">✓ Use This Recording</button>
-            <button onclick="resetRecording()" style="
-                background: #f3f4f6;
-                color: #374151;
-                border: 1px solid #d1d5db;
-                padding: 12px 24px;
-                font-size: 1rem;
-                font-weight: 500;
-                border-radius: 10px;
-                cursor: pointer;
-            ">↺ Record Again</button>
-        </div>
-    </div>
-</div>
-
-<script>
-let mediaRecorder;
-let audioChunks = [];
-let isRecording = false;
-let timerInterval;
-let seconds = 0;
-let audioBlob;
-
-async function toggleRecording() {
-    if (!isRecording) {
-        await startRecording();
-    } else {
-        stopRecording();
-    }
-}
-
-async function startRecording() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
-        
-        mediaRecorder.onstop = () => {
-            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            document.getElementById('audioPlayback').src = audioUrl;
-            document.getElementById('audioPreview').style.display = 'block';
-            
-            // Update status
-            document.getElementById('status').className = 'recording-status status-complete';
-            document.getElementById('status').innerHTML = '<span>✓</span> Recording complete';
-        };
-        
-        mediaRecorder.start();
-        isRecording = true;
-        
-        // Update UI
-        document.getElementById('recordBtn').style.background = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
-        document.getElementById('recordBtn').style.boxShadow = '0 4px 15px rgba(107, 114, 128, 0.3)';
-        document.getElementById('recordIcon').textContent = '⏹';
-        document.getElementById('recordText').textContent = 'Stop Recording';
-        document.getElementById('status').className = 'recording-status status-recording';
-        document.getElementById('status').innerHTML = '<div class="pulse-dot"></div> Recording...';
-        document.getElementById('audioPreview').style.display = 'none';
-        
-        // Start timer
-        seconds = 0;
-        timerInterval = setInterval(() => {
-            seconds++;
-            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const secs = (seconds % 60).toString().padStart(2, '0');
-            document.getElementById('timer').textContent = `${mins}:${secs}`;
-            document.getElementById('timer').style.color = '#dc2626';
-        }, 1000);
-        
-    } catch (err) {
-        alert('Could not access microphone. Please allow microphone access and try again.');
-        console.error('Error accessing microphone:', err);
-    }
-}
-
-function stopRecording() {
-    if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-        isRecording = false;
-        
-        // Update UI
-        document.getElementById('recordBtn').style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
-        document.getElementById('recordBtn').style.boxShadow = '0 4px 15px rgba(220, 38, 38, 0.3)';
-        document.getElementById('recordIcon').textContent = '⏺';
-        document.getElementById('recordText').textContent = 'Start Recording';
-        document.getElementById('timer').style.color = '#1f2937';
-        
-        // Stop timer
-        clearInterval(timerInterval);
-    }
-}
-
-function resetRecording() {
-    document.getElementById('audioPreview').style.display = 'none';
-    document.getElementById('timer').textContent = '00:00';
-    document.getElementById('status').className = 'recording-status status-ready';
-    document.getElementById('status').innerHTML = '<span>🎙️</span> Ready to record';
-    seconds = 0;
-    audioBlob = null;
-}
-
-function submitAudio() {
-    if (audioBlob) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64data = reader.result.split(',')[1];
-            
-            // Send to Streamlit
-            window.parent.postMessage({
-                type: 'streamlit:setComponentValue',
-                data: base64data
-            }, '*');
-            
-            // Also try the Streamlit component method
-            if (window.Streamlit) {
-                window.Streamlit.setComponentValue(base64data);
-            }
-        };
-        reader.readAsDataURL(audioBlob);
-        
-        document.getElementById('status').innerHTML = '<span>📤</span> Sending audio...';
-    }
-}
-
-// Initialize Streamlit component communication
-if (window.Streamlit) {
-    window.Streamlit.setComponentReady();
-}
-</script>
-"""
+# ──────────────────────────────────────────────────────────────────────────────
+# OpenAI client init (FIXED: your previous code referenced init_openai_client()
+# but didn't define it)
+# ──────────────────────────────────────────────────────────────────────────────
+def init_openai_client():
+    api_key = (
+        os.environ.get("OPENAI_API_KEY")
+        or st.secrets.get("OPENAI_API_KEY", None)
+        or st.session_state.get("openai_api_key")
+    )
+    if api_key:
+        return OpenAI(api_key=api_key)
+    return None
 
 
-api_key = (
-    os.environ.get("OPENAI_API_KEY")
-    or st.secrets.get("OPENAI_API_KEY", None)
-    or st.session_state.get("openai_api_key")
-)
-
-
-
+# ──────────────────────────────────────────────────────────────────────────────
+# Core AI functions
+# ──────────────────────────────────────────────────────────────────────────────
 def transcribe_audio(client, audio_file_path):
     """Transcribe audio using OpenAI Whisper."""
     with open(audio_file_path, 'rb') as audio_file:
@@ -476,8 +341,8 @@ def transcribe_audio(client, audio_file_path):
 
 
 def analyze_communication(client, transcript_text, meeting_context):
-    """Analyze communication using GPT-4."""
-    
+    """Analyze communication using GPT-4o (JSON output)."""
+
     analysis_prompt = f"""You are an elite executive communication analyst with 20 years of experience coaching Fortune 500 CEOs, world leaders, and elite performers.
 
 Analyze this communication with surgical precision. Be specific, evidence-based, and actionable.
@@ -558,34 +423,43 @@ Be direct. No fluff. Every insight must be actionable."""
             {"role": "system", "content": "You are an elite executive communication analyst. Respond only with valid JSON, no markdown."},
             {"role": "user", "content": analysis_prompt}
         ],
-        temperature=0.7,
+        temperature=0.5,
         max_tokens=2500
     )
-    
+
     response_text = response.choices[0].message.content.strip()
+
+    # Defensive cleanup (in case of fenced output)
     if response_text.startswith("```"):
-        response_text = response_text.split("```")[1]
-        if response_text.startswith("json"):
-            response_text = response_text[4:]
+        parts = response_text.split("```")
+        response_text = parts[1] if len(parts) > 1 else response_text
+        if response_text.lstrip().startswith("json"):
+            response_text = response_text.lstrip()[4:]
+
     response_text = response_text.strip()
-    
-    return json.loads(response_text)
+
+    try:
+        return json.loads(response_text)
+    except json.JSONDecodeError:
+        # Surface the raw text to help debug prompt compliance
+        raise ValueError(f"Model did not return valid JSON. Raw output:\n{response_text}")
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# UI helpers
+# ──────────────────────────────────────────────────────────────────────────────
 def get_score_color(score):
-    """Return color based on score."""
     if score >= 80:
         return "#059669"
     elif score >= 60:
-        return "#3b82f6"
+        return "#16a34a"
     elif score >= 40:
         return "#d97706"
-    else:
-        return "#dc2626"
+    return "#dc2626"
 
 
 def render_header():
-    """Render a clean, landing-page hero (marketing style)."""
+    """Marketing-style landing hero."""
     st.markdown("""
     <div class="cm-hero">
       <div class="cm-nav">
@@ -603,25 +477,20 @@ def render_header():
         <div>
           <h1 class="cm-h1">Say it with clarity, authority, and impact.</h1>
           <p class="cm-sub">
-            Upload or record a high-stakes conversation and get a coaching-grade analysis:
+            Record or upload a high-stakes conversation and get coaching-grade feedback:
             what worked, what didn’t, and the single highest-leverage change for next time.
           </p>
-
-          <div class="cm-cta-row">
-            <!-- Primary CTA is your tab + record button below; this is just visual framing -->
-            <span class="cm-mini">Tip: Add context in the left panel for sharper feedback.</span>
-          </div>
-
           <div class="cm-proof">
-            <strong>Outputs:</strong> Effectiveness score, strengths, fixes, key moments, cognitive load, and “ONE thing” action.
+            <strong>Outputs:</strong> Effectiveness score, strengths, fixes, key moments, cognitive load, and a “ONE thing” action.
           </div>
+          <div class="cm-version">UI refresh • Grammarly-inspired landing</div>
         </div>
 
         <div>
           <div class="cm-card">
             <p class="cm-card-title">What you’ll get</p>
             <p class="cm-card-text">A structured report you can act on immediately—no fluff.</p>
-            <div class="cm-divider"></div>
+            <div style="height:1px;background:var(--border);margin:1.1rem 0;"></div>
             <p class="cm-card-text"><strong>Best for:</strong> board updates, investor pitches, negotiations, client meetings.</p>
           </div>
         </div>
@@ -630,11 +499,11 @@ def render_header():
       <div class="cm-cards">
         <div class="cm-card">
           <p class="cm-card-title">Executive-grade clarity</p>
-          <p class="cm-card-text">Flags vague sections and gives a rewrite-level fix you can reuse.</p>
+          <p class="cm-card-text">Flags vague sections and gives concrete, reusable fixes.</p>
         </div>
         <div class="cm-card">
           <p class="cm-card-title">Authority & persuasion</p>
-          <p class="cm-card-text">Identifies where you lose leverage—and what to say instead.</p>
+          <p class="cm-card-text">Shows where leverage drops—and what to say instead.</p>
         </div>
         <div class="cm-card">
           <p class="cm-card-title">Cognitive load control</p>
@@ -645,40 +514,37 @@ def render_header():
     """, unsafe_allow_html=True)
 
 
-
 def render_subscore(score, label):
-    """Render a single subscore card."""
     color = get_score_color(score)
     st.markdown(f"""
-    <div class="subscore-card">
-        <div class="subscore-value" style="color: {color};">{score}</div>
-        <div class="subscore-label">{label}</div>
-        <div class="subscore-bar">
-            <div class="subscore-fill" style="width: {score}%; background: {color};"></div>
+    <div class="subscore-card" style="text-align:center; border-radius:16px; padding:1.25rem;">
+        <div class="subscore-value" style="color: {color}; font-size:2.1rem; font-weight:900; margin-bottom:0.25rem;">{score}</div>
+        <div class="subscore-label" style="color:#6b7280; font-weight:700; font-size:0.9rem;">{label}</div>
+        <div style="height:6px;background:#e5e7eb;border-radius:999px;margin-top:1rem;overflow:hidden;">
+            <div style="height:100%;width:{score}%;background:{color};border-radius:999px;"></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 def render_report(analysis, transcript):
-    """Render the full analysis report."""
-    
     ces = analysis['communication_effectiveness_score']
     verdict = analysis.get('score_verdict', 'Competent')
-    
+
+    # Top score (keep your original structure but it will be softened by CSS above)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown(f"""
-        <div class="ces-container">
-            <div class="ces-label">Communication Effectiveness Score</div>
-            <div class="ces-score">{ces}</div>
-            <div class="ces-max">out of 100</div>
-            <div class="ces-verdict">{verdict}</div>
+        <div class="ces-container" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color:white; padding:2.25rem; text-align:center;">
+            <div style="font-size:0.85rem; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; opacity:0.95;">Communication Effectiveness</div>
+            <div style="font-size:4.6rem; font-weight:900; line-height:1; margin:0.35rem 0;">{ces}</div>
+            <div style="opacity:0.85; font-weight:700;">out of 100</div>
+            <div style="margin-top:1rem; display:inline-block; padding:0.45rem 1.1rem; border-radius:999px; background:rgba(255,255,255,0.18); font-weight:800;">{verdict}</div>
         </div>
         """, unsafe_allow_html=True)
-    
+
     st.markdown("<br>", unsafe_allow_html=True)
-    
+
     # Executive Summary
     st.markdown("""
     <div class="section-header">
@@ -686,13 +552,13 @@ def render_report(analysis, transcript):
         <h3 class="section-title">Executive Summary</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     st.markdown(f"""
     <div class="executive-summary">
         {analysis['executive_summary']}
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Sub-scores
     st.markdown("""
     <div class="section-header">
@@ -700,7 +566,7 @@ def render_report(analysis, transcript):
         <h3 class="section-title">Performance Breakdown</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     cols = st.columns(5)
     sub_scores = analysis['sub_scores']
     labels = [
@@ -710,16 +576,15 @@ def render_report(analysis, transcript):
         ("persuasion", "Persuasion"),
         ("emotional_regulation", "Composure")
     ]
-    
     for col, (key, label) in zip(cols, labels):
         with col:
             render_subscore(sub_scores[key], label)
-    
+
     st.markdown("<br>", unsafe_allow_html=True)
-    
+
     # Strengths & Improvements
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("""
         <div class="section-header">
@@ -727,18 +592,18 @@ def render_report(analysis, transcript):
             <h3 class="section-title">Strengths</h3>
         </div>
         """, unsafe_allow_html=True)
-        
+
         for strength in analysis['strengths']:
             st.markdown(f"""
             <div class="insight-card">
                 <div class="insight-icon insight-icon-strength">✓</div>
-                <div class="insight-content">
+                <div style="flex:1;">
                     <div class="insight-title">{strength['title']}</div>
                     <div class="insight-text">{strength['detail']}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    
+
     with col2:
         st.markdown("""
         <div class="section-header">
@@ -746,18 +611,18 @@ def render_report(analysis, transcript):
             <h3 class="section-title">Areas to Improve</h3>
         </div>
         """, unsafe_allow_html=True)
-        
+
         for improvement in analysis['improvements']:
             st.markdown(f"""
             <div class="insight-card">
                 <div class="insight-icon insight-icon-improve">↑</div>
-                <div class="insight-content">
+                <div style="flex:1;">
                     <div class="insight-title">{improvement['title']}</div>
                     <div class="insight-text">{improvement['detail']}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    
+
     # Key Moments
     st.markdown("""
     <div class="section-header">
@@ -765,26 +630,26 @@ def render_report(analysis, transcript):
         <h3 class="section-title">Key Moments</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     for moment in analysis['key_moments']:
         impact_class = {
             "positive": "insight-icon-strength",
             "negative": "insight-icon-improve",
             "neutral": "insight-icon-moment"
         }.get(moment['impact'], "insight-icon-moment")
-        
+
         impact_icon = {"positive": "↑", "negative": "↓", "neutral": "→"}.get(moment['impact'], "•")
-        
+
         st.markdown(f"""
         <div class="insight-card">
             <div class="insight-icon {impact_class}">{impact_icon}</div>
-            <div class="insight-content">
+            <div style="flex:1;">
                 <div class="insight-title">{moment['timestamp'].title()}: {moment['title']}</div>
                 <div class="insight-text">{moment['insight']}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
-    
+
     # Cognitive Load
     st.markdown("""
     <div class="section-header">
@@ -792,12 +657,12 @@ def render_report(analysis, transcript):
         <h3 class="section-title">Cognitive Load Analysis</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     cog = analysis['cognitive_load']
-    
+
     def get_cog_class(level):
         return {"low": "cog-low", "medium": "cog-medium", "high": "cog-high"}.get(level.lower(), "cog-medium")
-    
+
     st.markdown(f"""
     <div class="cog-meter">
         <div class="cog-meter-row">
@@ -818,9 +683,9 @@ def render_report(analysis, transcript):
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     st.markdown("<br>", unsafe_allow_html=True)
-    
+
     # The ONE Thing
     st.markdown("""
     <div class="section-header">
@@ -828,34 +693,35 @@ def render_report(analysis, transcript):
         <h3 class="section-title">The ONE Thing to Change</h3>
     </div>
     """, unsafe_allow_html=True)
-    
+
     st.markdown(f"""
-    <div class="action-hero">
-        <div class="action-hero-label">Your Highest-Impact Action</div>
-        <div class="action-hero-text">{analysis['one_thing']}</div>
+    <div class="cm-section" style="border-color: rgba(34,197,94,0.28); background: rgba(34,197,94,0.07);">
+        <div style="font-size:0.78rem; font-weight:900; letter-spacing:0.14em; text-transform:uppercase; color: var(--accent-dark); margin-bottom:0.6rem;">
+            Your highest-impact action
+        </div>
+        <div style="font-size:1.2rem; font-weight:900; color: var(--text); line-height:1.5;">
+            {analysis['one_thing']}
+        </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Transcript
     with st.expander("📝 View Full Transcript"):
-        st.markdown(f"""
-        <div class="transcript-box">{transcript}</div>
-        """, unsafe_allow_html=True)
-    
-    # Report footer
+        st.markdown(f"""<div class="transcript-box">{transcript}</div>""", unsafe_allow_html=True)
+
+    # Footer + download
     st.markdown(f"""
     <div class="report-footer">
         Analysis generated by CoMentor • {datetime.now().strftime('%B %d, %Y at %H:%M')}
     </div>
     """, unsafe_allow_html=True)
-    
-    # Download button
+
     report_data = {
         "analysis": analysis,
         "transcript": transcript,
         "generated_at": datetime.now().isoformat()
     }
-    
+
     st.download_button(
         "📥 Download Full Report (JSON)",
         data=json.dumps(report_data, indent=2),
@@ -866,214 +732,217 @@ def render_report(analysis, transcript):
 
 def process_audio(client, audio_data, meeting_context, is_base64=False):
     """Process audio data and run analysis."""
-    
-    # Create temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as tmp:
         if is_base64:
             tmp.write(base64.b64decode(audio_data))
         else:
             tmp.write(audio_data)
         tmp_path = tmp.name
-    
+
     try:
-        # Transcribe
         transcript = transcribe_audio(client, tmp_path)
         transcript_text = transcript.text
-        
-        # Analyze
         analysis = analyze_communication(client, transcript_text, meeting_context)
-        
         return analysis, transcript_text
-        
     finally:
         os.unlink(tmp_path)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Main app
+# ──────────────────────────────────────────────────────────────────────────────
 def main():
     # Sidebar
     with st.sidebar:
         st.markdown("""
-        <div style="padding: 1rem 0;">
-            <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 1rem;">
+        <div style="padding: 0.5rem 0 0.25rem 0;">
+            <div style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.9rem;">
                 Configuration
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Only show API key input if not set in environment
-        if not os.environ.get('OPENAI_API_KEY'):
-            api_key = st.text_input(
+
+        # Only show API key input if not set in environment or secrets
+        env_has_key = bool(os.environ.get("OPENAI_API_KEY")) or ("OPENAI_API_KEY" in st.secrets)
+        if not env_has_key:
+            st.text_input(
                 "OpenAI API Key",
                 type="password",
-                help="Enter your OpenAI API key",
+                help="Enter your OpenAI API key (not saved). Prefer Streamlit Secrets for deployment.",
                 key="openai_api_key"
             )
-        
+
         st.markdown("""
-        <div style="padding: 1rem 0;">
-            <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 1rem;">
-                Meeting Context
+        <div style="padding: 1rem 0 0.25rem 0;">
+            <div style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.9rem;">
+                Meeting context
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
+
         meeting_type = st.selectbox(
             "Meeting Type",
-            ["Board Presentation", "Investor Pitch", "Sales Call", "Team Update", 
+            ["Board Presentation", "Investor Pitch", "Sales Call", "Team Update",
              "Negotiation", "Client Meeting", "Media Interview", "Other"]
         )
-        
+
         objective = st.selectbox(
             "Primary Objective",
-            ["Persuade / Influence", "Inform / Update", "Decide / Align", 
+            ["Persuade / Influence", "Inform / Update", "Decide / Align",
              "Build Relationship", "Negotiate Terms", "Defend Position"]
         )
-        
+
         audience = st.selectbox(
             "Audience",
-            ["C-Suite / Board", "Investors", "Senior Leadership", "Clients", 
+            ["C-Suite / Board", "Investors", "Senior Leadership", "Clients",
              "Direct Reports", "External Stakeholders", "Media / Public"]
         )
-        
+
         speaker_role = st.text_input(
             "Your Role",
             placeholder="e.g., CEO, Founder, Managing Director"
         )
-    
-    # Main content
+
+    # Landing header
     render_header()
-    
+
+    # Client
     client = init_openai_client()
-    
+
     if not client:
         st.markdown("""
-        <div style="text-align: center; padding: 3rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
-            <h3>Enter your OpenAI API key to begin</h3>
-            <p style="color: #6b7280;">Add your API key in the sidebar to unlock communication analysis</p>
+        <div class="cm-section" style="text-align:center;">
+          <div style="font-size:2.25rem; margin-bottom:0.5rem;">🔐</div>
+          <h3 style="margin:0; font-weight:900; letter-spacing:-0.02em;">Add your OpenAI API key to start</h3>
+          <p style="color: var(--muted); margin-top:0.6rem; line-height:1.6;">
+            Use the sidebar for local testing, or Streamlit Secrets for deployment.
+          </p>
         </div>
         """, unsafe_allow_html=True)
         return
-    
+
     # Show results if available
     if 'analysis' in st.session_state and st.session_state.get('show_results'):
         render_report(st.session_state['analysis'], st.session_state['transcript'])
-        
+
         if st.button("← Analyze Another Recording"):
             st.session_state['show_results'] = False
             st.rerun()
         return
-    
-    # Input tabs
+
+    # Input tabs inside a “marketing” section card
+    st.markdown('<div class="cm-section">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🎙️ Record Audio", "📁 Upload File"])
-    
+
     meeting_context = {
         "meeting_type": meeting_type,
         "objective": objective,
         "audience": audience,
         "speaker_role": speaker_role or "Executive"
     }
-    
+
     with tab1:
         st.markdown("""
-        <div class="record-container">
-            <h3 style="margin-top: 0; color: #1f2937;">Record Your Communication</h3>
-            <p style="color: #6b7280;">Click the button below to start recording. Speak clearly for best results.</p>
+        <div class="cm-strip">
+          <h3>Record your communication</h3>
+          <p>Record a short segment, then analyze. Add context on the left for sharper coaching.</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Use streamlit-webrtc or audio_recorder_streamlit for recording
-        # For now, we'll use a simpler approach with st.audio_input (Streamlit 1.33+)
-        
+
         try:
             audio_value = st.audio_input("Record your audio", key="audio_recorder")
-            
+
             if audio_value:
                 st.audio(audio_value)
-                
-                if st.button("🚀 Analyze Recording", key="analyze_recorded", use_container_width=True):
+
+                if st.button("Analyze Recording", key="analyze_recorded", use_container_width=True):
                     with st.status("Analyzing your communication...", expanded=True) as status:
                         st.write("🎙️ Processing audio...")
-                        
-                        # Save audio to temp file
+
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
                             tmp.write(audio_value.getvalue())
                             tmp_path = tmp.name
-                        
+
                         try:
-                            st.write("📝 Transcribing with Whisper AI...")
+                            st.write("📝 Transcribing with Whisper...")
                             transcript = transcribe_audio(client, tmp_path)
                             transcript_text = transcript.text
-                            
-                            st.write("🧠 Running deep analysis with GPT-4...")
+
+                            st.write("🧠 Running communication analysis...")
                             analysis = analyze_communication(client, transcript_text, meeting_context)
-                            
+
                             st.session_state['analysis'] = analysis
                             st.session_state['transcript'] = transcript_text
                             st.session_state['show_results'] = True
-                            
+
                             status.update(label="Analysis complete!", state="complete")
                             st.rerun()
-                            
                         finally:
                             os.unlink(tmp_path)
-                            
-        except Exception as e:
-            st.info("🎙️ Audio recording requires Streamlit 1.33 or later. Please use the **Upload File** tab instead, or update Streamlit.")
-    
+
+        except Exception:
+            st.info("Audio recording requires Streamlit 1.33+. Use the **Upload File** tab instead, or update Streamlit.")
+
     with tab2:
-        st.markdown("### Upload Recording")
-        
+        st.markdown("""
+        <div class="cm-strip">
+          <h3>Upload a recording</h3>
+          <p>Upload audio/video and analyze. Shorter clips run faster and cost less.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
         uploaded_file = st.file_uploader(
             "Drag and drop your meeting recording",
             type=['mp3', 'mp4', 'wav', 'm4a', 'webm', 'mpeg4', 'ogg'],
-            help="Supported: MP3, MP4, WAV, M4A, WebM, OGG (max 200MB)"
+            help="Supported: MP3, MP4, WAV, M4A, WebM, OGG"
         )
-        
+
         if uploaded_file:
+            size_mb = uploaded_file.size / 1024 / 1024
             st.markdown(f"""
-            <div class="status-badge status-success">
-                ✓ {uploaded_file.name} ({uploaded_file.size / 1024 / 1024:.1f} MB)
+            <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 0.9rem;border-radius:999px;border:1px solid var(--border);background:var(--soft);font-weight:800;color:var(--text);">
+                ✓ {uploaded_file.name} ({size_mb:.1f} MB)
             </div>
             """, unsafe_allow_html=True)
-            
+
             st.audio(uploaded_file)
-            
-            if st.button("🚀 Analyze Communication", key="analyze_uploaded", use_container_width=True):
-                # Save temp file
+
+            if st.button("Analyze Upload", key="analyze_uploaded", use_container_width=True):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp:
                     tmp.write(uploaded_file.getvalue())
                     tmp_path = tmp.name
-                
+
                 try:
                     with st.status("Analyzing your communication...", expanded=True) as status:
-                        st.write("📝 Transcribing with Whisper AI...")
+                        st.write("📝 Transcribing with Whisper...")
                         transcript = transcribe_audio(client, tmp_path)
                         transcript_text = transcript.text
                         st.write(f"✓ Transcribed {len(transcript_text.split())} words")
-                        
-                        st.write("🧠 Running deep analysis with GPT-4...")
+
+                        st.write("🧠 Running communication analysis...")
                         analysis = analyze_communication(client, transcript_text, meeting_context)
-                        
+
                         st.session_state['analysis'] = analysis
                         st.session_state['transcript'] = transcript_text
                         st.session_state['show_results'] = True
-                        
+
                         status.update(label="Analysis complete!", state="complete")
                         st.rerun()
-                        
+
                 except Exception as e:
                     st.error(f"Analysis failed: {str(e)}")
                 finally:
                     os.unlink(tmp_path)
-        
         else:
             st.markdown("""
-            <div style="text-align: center; padding: 2rem; color: #6b7280;">
-                <p>Upload an audio or video recording of a meeting, presentation, or conversation.</p>
+            <div style="text-align: center; padding: 1.5rem; color: var(--muted);">
+                <p style="margin:0;">Upload an audio or video recording of a meeting, presentation, or conversation.</p>
             </div>
             """, unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
     main()
+````
