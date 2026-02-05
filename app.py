@@ -16,6 +16,8 @@ import json
 from openai import OpenAI
 from datetime import datetime
 import base64
+import textwrap
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -317,14 +319,27 @@ div[data-testid="stFileUploader"] section {
 # but didn't define it)
 # ──────────────────────────────────────────────────────────────────────────────
 def init_openai_client():
-    api_key = (
-        os.environ.get("OPENAI_API_KEY")
-        or st.secrets.get("OPENAI_API_KEY", None)
-        or st.session_state.get("openai_api_key")
-    )
-    if api_key:
-        return OpenAI(api_key=api_key)
-    return None
+    # 1. Environment variable
+    api_key = os.environ.get("OPENAI_API_KEY")
+
+    # 2. Streamlit Secrets (safe access)
+    if not api_key:
+        try:
+            if "OPENAI_API_KEY" in st.secrets:
+                api_key = st.secrets["OPENAI_API_KEY"]
+        except Exception:
+            pass
+
+    # 3. Sidebar input
+    if not api_key:
+        api_key = st.session_state.get("openai_api_key")
+
+    # 4. Hard guard – prevents TypeError
+    if not api_key or not isinstance(api_key, str) or len(api_key.strip()) < 10:
+        return None
+
+    return OpenAI(api_key=api_key.strip())
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
