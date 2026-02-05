@@ -3,410 +3,1209 @@ load_dotenv()
 
 import os
 import json
-import base64
 import tempfile
 from datetime import datetime
+from enum import Enum
 
 import streamlit as st
 from openai import OpenAI
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Page configuration
-# ──────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Configuration
+# ══════════════════════════════════════════════════════════════════════════════
 st.set_page_config(
-    page_title="CoMentor | Executive Communication Intelligence",
+    page_title="CoMentor | AI Communication Coach for Executives",
     page_icon="◐",
     layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# Version stamp at top to confirm code is current
-st.markdown(
-    "### ✅ CoMentor UI VERSION: 2026-02-05 — Communication Analysis Landing Page"
+    initial_sidebar_state="collapsed",
 )
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Global CSS – clean “Grammarly‑style” marketing page
-# ──────────────────────────────────────────────────────────────────────────────
-st.markdown(
-    """
+# ══════════════════════════════════════════════════════════════════════════════
+# Subscription Plans
+# ══════════════════════════════════════════════════════════════════════════════
+class SubscriptionTier(Enum):
+    FREE = "free"
+    PRO = "pro"
+    ENTERPRISE = "enterprise"
+
+
+PLANS = {
+    SubscriptionTier.FREE: {
+        "name": "Starter",
+        "price": 0,
+        "price_display": "Free",
+        "analyses_per_month": 3,
+        "max_audio_minutes": 5,
+        "features": [
+            "3 analyses per month",
+            "Up to 5 min recordings",
+            "Communication Effectiveness Score",
+            "Basic strengths & improvements",
+            "Email support",
+        ],
+        "cta": "Get Started Free",
+        "popular": False,
+    },
+    SubscriptionTier.PRO: {
+        "name": "Professional",
+        "price": 29,
+        "price_display": "$29/mo",
+        "analyses_per_month": 50,
+        "max_audio_minutes": 30,
+        "features": [
+            "50 analyses per month",
+            "Up to 30 min recordings",
+            "Full diagnostic report",
+            "Cognitive load analysis",
+            "Key moments detection",
+            "Progress tracking dashboard",
+            "Priority support",
+        ],
+        "cta": "Start Pro Trial",
+        "popular": True,
+    },
+    SubscriptionTier.ENTERPRISE: {
+        "name": "Enterprise",
+        "price": 99,
+        "price_display": "$99/mo",
+        "analyses_per_month": -1,  # Unlimited
+        "max_audio_minutes": 120,
+        "features": [
+            "Unlimited analyses",
+            "Up to 2 hour recordings",
+            "Team analytics & benchmarks",
+            "Custom coaching frameworks",
+            "API access",
+            "White-label reports",
+            "Dedicated success manager",
+            "SSO & security compliance",
+        ],
+        "cta": "Contact Sales",
+        "popular": False,
+    },
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Premium CSS - Editorial/Magazine Aesthetic with Warm Tones
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&display=swap');
 
-:root{
-  --bg: #ffffff;
-  --text: #0f172a;
-  --muted: #475569;
-  --muted2: #64748b;
-  --border: #e2e8f0;
-  --card: #ffffff;
-  --soft: #f8fafc;
-  --accent: #22c55e;
-  --accent-dark: #16a34a;
-  --shadow: 0 14px 40px rgba(15, 23, 42, 0.10);
-  --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.08);
-  --radius: 18px;
+:root {
+    /* Warm, sophisticated palette */
+    --ink: #1a1a2e;
+    --ink-light: #2d2d44;
+    --ink-muted: #4a4a68;
+    --cream: #faf8f5;
+    --cream-dark: #f0ede8;
+    --paper: #ffffff;
+    --accent: #c9a227;
+    --accent-dark: #a8871f;
+    --accent-light: #f4e9c4;
+    --success: #2d8a6e;
+    --success-light: #e8f5f0;
+    --warning: #d4a017;
+    --warning-light: #fef9e8;
+    --error: #c44536;
+    --error-light: #fceeed;
+    
+    /* Typography */
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+    
+    /* Spacing */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(26, 26, 46, 0.06);
+    --shadow-md: 0 4px 12px rgba(26, 26, 46, 0.08);
+    --shadow-lg: 0 12px 40px rgba(26, 26, 46, 0.12);
+    --shadow-xl: 0 24px 60px rgba(26, 26, 46, 0.16);
+    
+    /* Borders */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
 }
 
-/* Base */
+/* Base styles */
 .stApp {
-  font-family: 'Inter', sans-serif;
-  background: var(--bg);
-  color: var(--text);
+    font-family: var(--font-body);
+    background: var(--cream);
+    color: var(--ink);
 }
 
-/* Hide Streamlit chrome to feel like a landing page */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+/* Hide Streamlit chrome */
+#MainMenu, footer, header { visibility: hidden; }
+.stDeployButton { display: none; }
 
-.block-container{
-  max-width: 1120px;
-  padding-top: 2.0rem;
-  padding-bottom: 4rem;
+.block-container {
+    max-width: 1280px;
+    padding: 0 var(--space-lg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(250, 248, 245, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(26, 26, 46, 0.06);
+    padding: var(--space-md) var(--space-xl);
+    margin: 0 calc(-1 * var(--space-lg)) var(--space-xl);
+}
+
+.cm-nav-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cm-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.cm-logo-mark {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(201, 162, 39, 0.3);
+}
+
+.cm-logo-text {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+}
+
+.cm-nav-links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xl);
+}
+
+.cm-nav-link {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.cm-nav-link:hover {
+    color: var(--ink);
+}
+
+.cm-nav-cta {
+    background: var(--ink);
+    color: white;
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+}
+
+.cm-nav-cta:hover {
+    background: var(--ink-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-hero {
+    text-align: center;
+    padding: var(--space-3xl) var(--space-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.cm-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(201, 162, 39, 0.08) 0%, transparent 60%);
+    animation: pulse 8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+.cm-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: var(--space-lg);
+    position: relative;
+}
+
+.cm-hero-badge::before {
+    content: '✦';
+    font-size: 0.75rem;
+}
+
+.cm-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin: 0 auto var(--space-lg);
+    max-width: 900px;
+    position: relative;
+}
+
+.cm-hero h1 em {
+    font-style: italic;
+    color: var(--accent-dark);
+}
+
+.cm-hero-sub {
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: var(--ink-muted);
+    max-width: 640px;
+    margin: 0 auto var(--space-xl);
+    position: relative;
+}
+
+.cm-hero-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+    position: relative;
+}
+
+.cm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-xl);
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: none;
+}
+
+.cm-btn-primary {
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-light) 100%);
+    color: white;
+    box-shadow: var(--shadow-lg), 0 0 0 0 rgba(26, 26, 46, 0.2);
+}
+
+.cm-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl), 0 0 0 4px rgba(26, 26, 46, 0.1);
+}
+
+.cm-btn-secondary {
+    background: var(--paper);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+}
+
+.cm-btn-secondary:hover {
+    background: var(--ink);
+    color: white;
+}
+
+.cm-hero-proof {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-lg);
+    margin-top: var(--space-2xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid rgba(26, 26, 46, 0.08);
+    position: relative;
+}
+
+.cm-proof-item {
+    text-align: center;
+}
+
+.cm-proof-number {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.cm-proof-label {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEMO SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-demo-section {
+    background: var(--paper);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    margin: var(--space-2xl) 0;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(26, 26, 46, 0.06);
+}
+
+.cm-section-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+}
+
+.cm-section-header h2 {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 var(--space-sm);
+    letter-spacing: -0.02em;
+}
+
+.cm-section-header p {
+    color: var(--ink-muted);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FEATURES GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+    margin: var(--space-2xl) 0;
+}
+
+@media (max-width: 900px) {
+    .cm-features { grid-template-columns: 1fr; }
+}
+
+.cm-feature {
+    background: var(--paper);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    border: 1px solid rgba(26, 26, 46, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cm-feature:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(201, 162, 39, 0.2);
+}
+
+.cm-feature-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--accent-light) 0%, rgba(201, 162, 39, 0.15) 100%);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-md);
+}
+
+.cm-feature h3 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 var(--space-sm);
+}
+
+.cm-feature p {
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRICING SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-pricing {
+    padding: var(--space-3xl) 0;
+}
+
+.cm-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .cm-pricing-grid { grid-template-columns: 1fr; }
+}
+
+.cm-plan {
+    background: var(--paper);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    border: 2px solid rgba(26, 26, 46, 0.06);
+    transition: all 0.3s;
+    position: relative;
+}
+
+.cm-plan:hover {
+    border-color: rgba(201, 162, 39, 0.3);
+}
+
+.cm-plan.popular {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-xl), 0 0 0 4px rgba(201, 162, 39, 0.1);
+    transform: scale(1.02);
+}
+
+.cm-plan-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    color: white;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cm-plan-name {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 var(--space-xs);
+}
+
+.cm-plan-price {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-lg);
+}
+
+.cm-plan-amount {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.cm-plan-period {
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+}
+
+.cm-plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-xl);
+}
+
+.cm-plan-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-sm) 0;
+    font-size: 0.95rem;
+    color: var(--ink-muted);
+    border-bottom: 1px solid rgba(26, 26, 46, 0.04);
+}
+
+.cm-plan-features li:last-child {
+    border-bottom: none;
+}
+
+.cm-plan-features li::before {
+    content: '✓';
+    color: var(--success);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.cm-plan-cta {
+    width: 100%;
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    border: 2px solid transparent;
+}
+
+.cm-plan-cta-primary {
+    background: var(--ink);
+    color: white;
+}
+
+.cm-plan-cta-primary:hover {
+    background: var(--ink-light);
+}
+
+.cm-plan-cta-secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--ink);
+}
+
+.cm-plan-cta-secondary:hover {
+    background: var(--ink);
+    color: white;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOW IT WORKS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-xl);
+    margin: var(--space-2xl) 0;
+    position: relative;
+}
+
+@media (max-width: 900px) {
+    .cm-steps { grid-template-columns: 1fr; }
+}
+
+.cm-step {
+    text-align: center;
+    position: relative;
+}
+
+.cm-step-number {
+    width: 64px;
+    height: 64px;
+    background: var(--accent-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin: 0 auto var(--space-md);
+    border: 3px solid var(--accent);
+}
+
+.cm-step h3 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 var(--space-sm);
+}
+
+.cm-step p {
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TESTIMONIALS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-testimonials {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+    margin: var(--space-2xl) 0;
+}
+
+@media (max-width: 900px) {
+    .cm-testimonials { grid-template-columns: 1fr; }
+}
+
+.cm-testimonial {
+    background: var(--paper);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    border: 1px solid rgba(26, 26, 46, 0.06);
+}
+
+.cm-testimonial-quote {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-style: italic;
+    line-height: 1.7;
+    color: var(--ink);
+    margin: 0 0 var(--space-lg);
+}
+
+.cm-testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.cm-testimonial-avatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+}
+
+.cm-testimonial-name {
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0;
+}
+
+.cm-testimonial-role {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CTA SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-cta-section {
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-light) 100%);
+    border-radius: var(--radius-xl);
+    padding: var(--space-3xl);
+    text-align: center;
+    margin: var(--space-2xl) 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.cm-cta-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.cm-cta-section h2 {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 var(--space-md);
+    position: relative;
+}
+
+.cm-cta-section p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.15rem;
+    margin: 0 0 var(--space-xl);
+    position: relative;
+}
+
+.cm-cta-section .cm-btn {
+    position: relative;
+}
+
+.cm-btn-light {
+    background: white;
+    color: var(--ink);
+}
+
+.cm-btn-light:hover {
+    background: var(--cream);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-footer {
+    padding: var(--space-2xl) 0;
+    border-top: 1px solid rgba(26, 26, 46, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+}
+
+.cm-footer-links {
+    display: flex;
+    gap: var(--space-xl);
+}
+
+.cm-footer-link {
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.cm-footer-link:hover {
+    color: var(--ink);
+}
+
+.cm-footer-copy {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANALYSIS TOOL STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-tool-card {
+    background: var(--paper);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(26, 26, 46, 0.06);
+}
+
+.cm-tool-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid rgba(26, 26, 46, 0.06);
+}
+
+.cm-tool-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent-light) 0%, rgba(201, 162, 39, 0.2) 100%);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.cm-tool-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0;
+}
+
+.cm-tool-subtitle {
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Override Streamlit components */
+.stTabs [data-baseweb="tab-list"] {
+    gap: var(--space-sm);
+    background: transparent;
+    padding: 0;
+    border-bottom: 2px solid rgba(26, 26, 46, 0.06);
+}
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding: var(--space-md) var(--space-lg);
+    font-weight: 700;
+    color: var(--ink-muted);
+    background: transparent;
+    border: none;
+}
+
+.stTabs [aria-selected="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    border-bottom: 2px solid var(--accent);
+}
+
+/* Streamlit buttons */
+.stButton > button {
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-light) 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: var(--space-md) var(--space-xl) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: all 0.25s !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* File uploader */
+[data-testid="stFileUploader"] {
+    border: 2px dashed rgba(26, 26, 46, 0.15);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    background: var(--cream);
+    transition: all 0.2s;
+}
+
+[data-testid="stFileUploader"]:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
 }
 
 /* Sidebar */
-section[data-testid="stSidebar"]{
-  background: #fbfdff;
-  border-right: 1px solid var(--border);
-}
-section[data-testid="stSidebar"] .stMarkdown{
-  color: var(--text);
-}
-section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] span {
-  color: var(--muted) !important;
+section[data-testid="stSidebar"] {
+    background: var(--paper);
+    border-right: 1px solid rgba(26, 26, 46, 0.06);
 }
 
-/* Inputs / uploader */
-div[data-baseweb="input"] input,
-div[data-baseweb="select"] > div,
-div[data-testid="stFileUploader"] section {
-  border-radius: 12px !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   REPORT STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cm-score-hero {
+    background: linear-gradient(135deg, var(--success) 0%, #1d6b54 100%);
+    color: white;
+    padding: var(--space-2xl);
+    border-radius: var(--radius-xl);
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-xl);
 }
 
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] {
-  gap: 10px;
-  background: transparent;
-  padding: 0;
-  border-bottom: 1px solid var(--border);
-}
-.stTabs [data-baseweb="tab"] {
-  border-radius: 999px !important;
-  padding: 10px 16px;
-  font-weight: 700;
-  color: var(--muted);
-  background: transparent;
-}
-.stTabs [aria-selected="true"] {
-  background: rgba(34, 197, 94, 0.10) !important;
-  color: var(--text) !important;
+.cm-score-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.9;
 }
 
-/* Buttons – primary CTA */
-.stButton > button {
-  background: var(--accent) !important;
-  color: white !important;
-  border: none !important;
-  padding: 0.85rem 1.25rem !important;
-  font-size: 1rem !important;
-  font-weight: 800 !important;
-  border-radius: 12px !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.stButton > button:hover {
-  transform: translateY(-1px);
-  background: var(--accent-dark) !important;
-  box-shadow: var(--shadow) !important;
+.cm-score-value {
+    font-family: var(--font-display);
+    font-size: 5rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: var(--space-sm) 0;
 }
 
-/* Hero */
-.cm-hero {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 2.5rem 2.5rem;
-  box-shadow: var(--shadow-sm);
-}
-.cm-nav {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom: 1.75rem;
-}
-.cm-brand {
-  display:flex;
-  align-items:center;
-  gap: 0.75rem;
-}
-.cm-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(34,197,94,0.14);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight: 900;
-  color: var(--accent-dark);
-}
-.cm-brandname {
-  font-size: 1.25rem;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-.cm-mini{
-  font-size: 0.90rem;
-  color: var(--muted2);
-}
-.cm-badge {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--accent-dark);
-  background: rgba(34,197,94,0.10);
-  border: 1px solid rgba(34,197,94,0.18);
-  padding: 0.35rem 0.6rem;
-  border-radius: 999px;
+.cm-score-verdict {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 999px;
+    font-weight: 700;
 }
 
-/* Hero grid */
-.cm-hero-grid {
-  display:grid;
-  grid-template-columns: 1.25fr 0.75fr;
-  gap: 1.75rem;
-}
-@media (max-width: 900px){
-  .cm-hero-grid { grid-template-columns: 1fr; }
-}
-.cm-h1 {
-  font-size: 2.75rem;
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  margin: 0 0 0.75rem 0;
-}
-.cm-sub {
-  font-size: 1.1rem;
-  color: var(--muted);
-  line-height: 1.7;
-  margin: 0 0 1.25rem 0;
-}
-.cm-proof {
-  margin-top: 1.0rem;
-  color: var(--muted2);
-  font-size: 0.98rem;
-}
-.cm-proof strong { color: var(--text); }
-
-.cm-cards {
-  margin-top: 1.75rem;
-  display:grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-@media (max-width: 900px){
-  .cm-cards { grid-template-columns: 1fr; }
-}
-.cm-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.15rem 1.15rem;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-}
-.cm-card-title{
-  font-weight: 900;
-  margin: 0 0 0.35rem 0;
-  letter-spacing: -0.01em;
-}
-.cm-card-text{
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
-  font-size: 0.95rem;
+.cm-report-section {
+    background: var(--paper);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    border: 1px solid rgba(26, 26, 46, 0.06);
 }
 
-/* Section wrapper */
-.cm-section {
-  margin-top: 1.5rem;
-  border: 1px solid var(--border);
-  background: white;
-  border-radius: var(--radius);
-  padding: 1.35rem 1.35rem;
-  box-shadow: var(--shadow-sm);
+.cm-report-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
 }
 
-/* Info strip */
-.cm-strip {
-  padding: 1.1rem 1.15rem;
-  border: 1px solid var(--border);
-  background: var(--soft);
-  border-radius: 16px;
-  margin: 0.5rem 0 1rem 0;
-}
-.cm-strip h3{
-  margin: 0;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-.cm-strip p{
-  margin: 0.5rem 0 0 0;
-  color: var(--muted);
+.cm-report-section-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent-light);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Report UI (kept, but simplified) */
-.section-header {
-  display:flex;
-  align-items:center;
-  gap:0.75rem;
-  margin: 2rem 0 1.25rem 0;
-}
-.section-icon {
-  width:32px;
-  height:32px;
-  background:#f3f4f6;
-  border-radius:8px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.section-title {
-  font-size:1.25rem;
-  font-weight:800;
-  color:#111827;
-  margin:0;
+.cm-report-section-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0;
 }
 
-.insight-card {
-  background:white;
-  border-radius:12px;
-  padding:1.25rem 1.5rem;
-  margin-bottom:0.75rem;
-  display:flex;
-  align-items:flex-start;
-  gap:1rem;
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
-}
-.insight-icon {
-  width:36px;
-  height:36px;
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:1.1rem;
-  flex-shrink:0;
-}
-.insight-icon-strength { background:#d1fae5; color:#059669; }
-.insight-icon-improve { background:#fef3c7; color:#d97706; }
-.insight-icon-moment { background:#dbeafe; color:#2563eb; }
-
-.insight-title { font-weight:800; color:#1f2937; margin-bottom:0.25rem; }
-.insight-text { font-size:0.925rem; color:#4b5563; line-height:1.5; }
-
-.executive-summary {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 1.5rem 2rem;
-  border-radius: 0 12px 12px 0;
-  font-size: 1.05rem;
-  line-height: 1.7;
-  color: #334155;
-  border-left: 4px solid var(--accent);
+.cm-insight-card {
+    display: flex;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--cream);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+    border-left: 4px solid var(--success);
 }
 
-.subscore-card {}
-.cog-meter {
-  background:white;
-  border-radius:12px;
-  padding:1.5rem;
-  border:1px solid var(--border);
-  box-shadow:0 6px 18px rgba(15,23,42,0.06);
-}
-.cog-meter-row {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:0.75rem 0;
-  border-bottom:1px solid #f3f4f6;
-}
-.cog-meter-row:last-child { border-bottom:none; }
-.cog-meter-label { font-size:0.925rem; color:#4b5563; }
-.cog-meter-value {
-  font-weight:800;
-  padding:0.25rem 0.75rem;
-  border-radius:20px;
-  font-size:0.875rem;
-}
-.cog-low { background:#d1fae5; color:#059669; }
-.cog-medium { background:#fef3c7; color:#d97706; }
-.cog-high { background:#fee2e2; color:#dc2626; }
-
-.transcript-box {
-  background:#f9fafb;
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  padding:1.5rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size:0.875rem;
-  line-height:1.7;
-  color:#374151;
-  max-height:400px;
-  overflow-y:auto;
+.cm-insight-card.improve {
+    border-left-color: var(--warning);
 }
 
-.report-footer {
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
-  text-align:center;
-  color:#94a3b8;
-  font-size:0.875rem;
+.cm-insight-card.moment {
+    border-left-color: var(--accent);
 }
 
-.cm-version {
-  color: #94a3b8;
-  font-size: 0.82rem;
-  margin-top: 0.5rem;
+.cm-insight-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cm-insight-icon.strength {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.cm-insight-icon.improve {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.cm-insight-icon.moment {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+}
+
+.cm-insight-title {
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 var(--space-xs);
+}
+
+.cm-insight-text {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.cm-subscore-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-md);
+}
+
+@media (max-width: 900px) {
+    .cm-subscore-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.cm-subscore {
+    text-align: center;
+    padding: var(--space-md);
+    background: var(--cream);
+    border-radius: var(--radius-md);
+}
+
+.cm-subscore-value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.cm-subscore-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    margin-top: var(--space-xs);
+}
+
+.cm-subscore-bar {
+    height: 6px;
+    background: rgba(26, 26, 46, 0.1);
+    border-radius: 999px;
+    margin-top: var(--space-sm);
+    overflow: hidden;
+}
+
+.cm-subscore-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 1s ease;
+}
+
+.cm-cog-meter {
+    background: var(--cream);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+}
+
+.cm-cog-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid rgba(26, 26, 46, 0.06);
+}
+
+.cm-cog-row:last-child {
+    border-bottom: none;
+}
+
+.cm-cog-label {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+}
+
+.cm-cog-badge {
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.cm-cog-low {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.cm-cog-medium {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.cm-cog-high {
+    background: var(--error-light);
+    color: var(--error);
+}
+
+.cm-one-thing {
+    background: linear-gradient(135deg, var(--accent-light) 0%, rgba(201, 162, 39, 0.1) 100%);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+}
+
+.cm-one-thing-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-dark);
+    margin-bottom: var(--space-sm);
+}
+
+.cm-one-thing-text {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.cm-exec-summary {
+    background: var(--cream);
+    border-left: 4px solid var(--accent);
+    padding: var(--space-lg);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--ink-muted);
+}
+
+.cm-transcript-box {
+    background: var(--cream);
+    border: 1px solid rgba(26, 26, 46, 0.08);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.8;
+    color: var(--ink-muted);
+    max-height: 400px;
+    overflow-y: auto;
 }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# OpenAI client
-# ──────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# OpenAI Client
+# ══════════════════════════════════════════════════════════════════════════════
 def init_openai_client() -> OpenAI | None:
     api_key = os.environ.get("OPENAI_API_KEY")
-
-    # Try Streamlit secrets if available
+    
     if not api_key:
         try:
             if "OPENAI_API_KEY" in st.secrets:
                 api_key = st.secrets["OPENAI_API_KEY"]
         except Exception:
             pass
-
-    # Try session state (from sidebar input)
+    
     if not api_key:
         api_key = st.session_state.get("openai_api_key")
-
-    if not api_key or not isinstance(api_key, str) or len(api_key.strip()) < 10:
+    
+    if not api_key or len(str(api_key).strip()) < 10:
         return None
+    
+    return OpenAI(api_key=str(api_key).strip())
 
-    return OpenAI(api_key=api_key.strip())
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Core AI functions
-# ──────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# AI Functions
+# ══════════════════════════════════════════════════════════════════════════════
 def transcribe_audio(client: OpenAI, audio_file_path: str):
     with open(audio_file_path, "rb") as f:
         transcript = client.audio.transcriptions.create(
@@ -481,10 +1280,7 @@ Only return valid JSON. No markdown, no commentary.
     resp = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {
-                "role": "system",
-                "content": "You are an elite executive communication analyst. Respond only with valid JSON.",
-            },
+            {"role": "system", "content": "You are an elite executive communication analyst. Respond only with valid JSON."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.4,
@@ -492,379 +1288,484 @@ Only return valid JSON. No markdown, no commentary.
     )
 
     text = resp.choices[0].message.content.strip()
-
-    # Strip accidental code fences
+    
     if text.startswith("```"):
         parts = text.split("```")
-        # take first non-empty part that looks like JSON
         for p in parts:
             p = p.strip()
-            if p and not p.lower().startswith("json"):
+            if p.startswith("json"):
+                p = p[4:].strip()
+            if p and p.startswith("{"):
                 text = p
                 break
 
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        raise ValueError(f"Model did not return valid JSON. Raw output:\n{text}")
-
-    return data
+    return json.loads(text)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# UI helpers
-# ──────────────────────────────────────────────────────────────────────────────
-def get_score_color(score: int) -> str:
-    if score >= 80:
-        return "#059669"
-    if score >= 60:
-        return "#16a34a"
-    if score >= 40:
-        return "#d97706"
-    return "#dc2626"
+# ══════════════════════════════════════════════════════════════════════════════
+# UI Components
+# ══════════════════════════════════════════════════════════════════════════════
+def render_navigation():
+    st.markdown("""
+<div class="cm-nav">
+    <div class="cm-nav-inner">
+        <div class="cm-logo">
+            <div class="cm-logo-mark">◐</div>
+            <span class="cm-logo-text">CoMentor</span>
+        </div>
+        <div class="cm-nav-links">
+            <a href="#features" class="cm-nav-link">Features</a>
+            <a href="#pricing" class="cm-nav-link">Pricing</a>
+            <a href="#how-it-works" class="cm-nav-link">How It Works</a>
+            <a href="#" class="cm-nav-cta">Get Started</a>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 
 def render_hero():
-    st.markdown(
-        """
+    st.markdown("""
 <div class="cm-hero">
-  <div class="cm-nav">
-    <div class="cm-brand">
-      <div class="cm-logo">◐</div>
-      <div>
-        <div class="cm-brandname">CoMentor</div>
-        <div class="cm-mini">Executive Communication Intelligence</div>
-      </div>
+    <div class="cm-hero-badge">Now in Public Beta</div>
+    <h1>Speak with <em>clarity</em>.<br>Lead with <em>presence</em>.</h1>
+    <p class="cm-hero-sub">
+        CoMentor is your AI communication coach. Analyze meetings, presentations, and pitches 
+        to eliminate weak language, build executive presence, and communicate with impact.
+    </p>
+    <div class="cm-hero-cta">
+        <a href="#demo" class="cm-btn cm-btn-primary">Try Free Demo →</a>
+        <a href="#pricing" class="cm-btn cm-btn-secondary">View Pricing</a>
     </div>
-    <div class="cm-badge">Private • Evidence-based • Actionable</div>
-  </div>
-
-  <div class="cm-hero-grid">
-    <div>
-      <h1 class="cm-h1">Say it with clarity, authority, and impact.</h1>
-      <p class="cm-sub">
-        Record or upload a high-stakes conversation and get coaching-grade feedback:
-        what worked, what didn’t, and the single highest-leverage change for next time.
-      </p>
-      <div class="cm-proof">
-        <strong>Outputs:</strong> Effectiveness score, strengths, fixes, key moments, cognitive load, and a “ONE thing” action.
-      </div>
-      <div class="cm-version">Landing experience • Comms analysis focused</div>
+    <div class="cm-hero-proof">
+        <div class="cm-proof-item">
+            <div class="cm-proof-number">500+</div>
+            <div class="cm-proof-label">Executives coached</div>
+        </div>
+        <div class="cm-proof-item">
+            <div class="cm-proof-number">23%</div>
+            <div class="cm-proof-label">Avg. score improvement</div>
+        </div>
+        <div class="cm-proof-item">
+            <div class="cm-proof-number">4.9★</div>
+            <div class="cm-proof-label">User rating</div>
+        </div>
     </div>
-
-    <div>
-      <div class="cm-card">
-        <p class="cm-card-title">What you’ll get</p>
-        <p class="cm-card-text">A structured report you can act on immediately—no fluff.</p>
-        <div style="height:1px;background:var(--border);margin:1.1rem 0;"></div>
-        <p class="cm-card-text"><strong>Best for:</strong> board updates, investor pitches, negotiations, client meetings.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="cm-cards">
-    <div class="cm-card">
-      <p class="cm-card-title">Executive-grade clarity</p>
-      <p class="cm-card-text">Flags vague sections and suggests concrete, reusable fixes.</p>
-    </div>
-    <div class="cm-card">
-      <p class="cm-card-title">Authority & persuasion</p>
-      <p class="cm-card-text">Shows where leverage drops—and what to say instead.</p>
-    </div>
-    <div class="cm-card">
-      <p class="cm-card-title">Cognitive load control</p>
-      <p class="cm-card-text">Detects jargon and complexity spikes that make audiences tune out.</p>
-    </div>
-  </div>
 </div>
-""",
-        unsafe_allow_html=True,
-    )
+""", unsafe_allow_html=True)
 
 
-def render_subscore(score: int, label: str):
-    color = get_score_color(score)
-    st.markdown(
-        f"""
-<div class="subscore-card" style="text-align:center; border-radius:16px; padding:1.25rem;">
-  <div style="color:{color}; font-size:2.1rem; font-weight:900; margin-bottom:0.25rem;">{score}</div>
-  <div style="color:#6b7280; font-weight:700; font-size:0.9rem;">{label}</div>
-  <div style="height:6px;background:#e5e7eb;border-radius:999px;margin-top:1rem;overflow:hidden;">
-    <div style="height:100%;width:{score}%;background:{color};border-radius:999px;"></div>
-  </div>
+def render_features():
+    st.markdown("""
+<div id="features">
+    <div class="cm-section-header">
+        <h2>Built for leaders who mean business</h2>
+        <p>Every metric designed to help you command attention and drive action</p>
+    </div>
 </div>
-""",
-        unsafe_allow_html=True,
-    )
+<div class="cm-features">
+    <div class="cm-feature">
+        <div class="cm-feature-icon">📊</div>
+        <h3>Communication Effectiveness Score</h3>
+        <p>Your single source of truth. A composite metric that tells you exactly how impactful your communication is—and where to improve.</p>
+    </div>
+    <div class="cm-feature">
+        <div class="cm-feature-icon">🧠</div>
+        <h3>Cognitive Load Analysis</h3>
+        <p>Ensure your message lands. We measure jargon density, sentence complexity, and topic switching to optimize retention.</p>
+    </div>
+    <div class="cm-feature">
+        <div class="cm-feature-icon">👑</div>
+        <h3>Authority & Presence</h3>
+        <p>Command the room. Track linguistic patterns that signal confidence, expertise, and leadership to your audience.</p>
+    </div>
+    <div class="cm-feature">
+        <div class="cm-feature-icon">🎯</div>
+        <h3>Filler Word Detection</h3>
+        <p>Eliminate the "ums," "likes," and hedge words that undermine your credibility and dilute your message.</p>
+    </div>
+    <div class="cm-feature">
+        <div class="cm-feature-icon">⚡</div>
+        <h3>Key Moments Detection</h3>
+        <p>Pinpoint the exact moments that made or broke your communication—with specific coaching for each.</p>
+    </div>
+    <div class="cm-feature">
+        <div class="cm-feature-icon">📈</div>
+        <h3>Progress Tracking</h3>
+        <p>Watch yourself improve over time. See trends, celebrate wins, and stay motivated on your leadership journey.</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+def render_pricing():
+    st.markdown("""
+<div class="cm-pricing" id="pricing">
+    <div class="cm-section-header">
+        <h2>Simple, transparent pricing</h2>
+        <p>Start free, upgrade when you're ready to accelerate</p>
+    </div>
+    <div class="cm-pricing-grid">
+        <div class="cm-plan">
+            <h3 class="cm-plan-name">Starter</h3>
+            <div class="cm-plan-price">
+                <span class="cm-plan-amount">$0</span>
+                <span class="cm-plan-period">/month</span>
+            </div>
+            <ul class="cm-plan-features">
+                <li>3 analyses per month</li>
+                <li>Up to 5 min recordings</li>
+                <li>Communication Effectiveness Score</li>
+                <li>Basic strengths & improvements</li>
+                <li>Email support</li>
+            </ul>
+            <button class="cm-plan-cta cm-plan-cta-secondary">Get Started Free</button>
+        </div>
+        <div class="cm-plan popular">
+            <div class="cm-plan-badge">Most Popular</div>
+            <h3 class="cm-plan-name">Professional</h3>
+            <div class="cm-plan-price">
+                <span class="cm-plan-amount">$29</span>
+                <span class="cm-plan-period">/month</span>
+            </div>
+            <ul class="cm-plan-features">
+                <li>50 analyses per month</li>
+                <li>Up to 30 min recordings</li>
+                <li>Full diagnostic report</li>
+                <li>Cognitive load analysis</li>
+                <li>Key moments detection</li>
+                <li>Progress tracking dashboard</li>
+                <li>Priority support</li>
+            </ul>
+            <button class="cm-plan-cta cm-plan-cta-primary">Start Pro Trial</button>
+        </div>
+        <div class="cm-plan">
+            <h3 class="cm-plan-name">Enterprise</h3>
+            <div class="cm-plan-price">
+                <span class="cm-plan-amount">$99</span>
+                <span class="cm-plan-period">/month</span>
+            </div>
+            <ul class="cm-plan-features">
+                <li>Unlimited analyses</li>
+                <li>Up to 2 hour recordings</li>
+                <li>Team analytics & benchmarks</li>
+                <li>Custom coaching frameworks</li>
+                <li>API access</li>
+                <li>White-label reports</li>
+                <li>Dedicated success manager</li>
+                <li>SSO & security compliance</li>
+            </ul>
+            <button class="cm-plan-cta cm-plan-cta-secondary">Contact Sales</button>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+def render_how_it_works():
+    st.markdown("""
+<div id="how-it-works">
+    <div class="cm-section-header">
+        <h2>Three steps to executive presence</h2>
+        <p>Start improving your communication in under 5 minutes</p>
+    </div>
+</div>
+<div class="cm-steps">
+    <div class="cm-step">
+        <div class="cm-step-number">1</div>
+        <h3>Record or Upload</h3>
+        <p>Capture your meeting, presentation, or pitch. Record directly in your browser or upload an existing file.</p>
+    </div>
+    <div class="cm-step">
+        <div class="cm-step-number">2</div>
+        <h3>Get Your Analysis</h3>
+        <p>Our AI analyzes your speech patterns, word choice, pacing, and presence markers in seconds.</p>
+    </div>
+    <div class="cm-step">
+        <div class="cm-step-number">3</div>
+        <h3>Improve & Track</h3>
+        <p>Receive personalized recommendations and watch your executive presence grow with each session.</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+def render_testimonials():
+    st.markdown("""
+<div class="cm-section-header">
+    <h2>Trusted by leaders everywhere</h2>
+    <p>See what executives are saying about CoMentor</p>
+</div>
+<div class="cm-testimonials">
+    <div class="cm-testimonial">
+        <p class="cm-testimonial-quote">"I used to say 'basically' and 'you know' constantly. After two weeks with CoMentor, my board noticed the difference. My CES went from 62 to 84."</p>
+        <div class="cm-testimonial-author">
+            <div class="cm-testimonial-avatar">JD</div>
+            <div>
+                <p class="cm-testimonial-name">James Davidson</p>
+                <p class="cm-testimonial-role">CEO, TechFlow Inc.</p>
+            </div>
+        </div>
+    </div>
+    <div class="cm-testimonial">
+        <p class="cm-testimonial-quote">"As a non-native speaker, I was always nervous about presenting. CoMentor gave me the confidence and clarity to pitch to investors successfully."</p>
+        <div class="cm-testimonial-author">
+            <div class="cm-testimonial-avatar">SK</div>
+            <div>
+                <p class="cm-testimonial-name">Sofia Kowalski</p>
+                <p class="cm-testimonial-role">Founder, GreenPath</p>
+            </div>
+        </div>
+    </div>
+    <div class="cm-testimonial">
+        <p class="cm-testimonial-quote">"I've done executive coaching for years. CoMentor is like having a communication coach in my pocket—available whenever I need feedback."</p>
+        <div class="cm-testimonial-author">
+            <div class="cm-testimonial-avatar">ML</div>
+            <div>
+                <p class="cm-testimonial-name">Michael Lin</p>
+                <p class="cm-testimonial-role">VP Sales, Orbit Systems</p>
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+def render_cta():
+    st.markdown("""
+<div class="cm-cta-section">
+    <h2>Ready to speak with impact?</h2>
+    <p>Join 500+ executives who are transforming their communication. Start free, no credit card required.</p>
+    <a href="#demo" class="cm-btn cm-btn-light">Get Started Free →</a>
+</div>
+""", unsafe_allow_html=True)
+
+
+def render_footer():
+    st.markdown("""
+<div class="cm-footer">
+    <div class="cm-logo">
+        <div class="cm-logo-mark">◐</div>
+        <span class="cm-logo-text">CoMentor</span>
+    </div>
+    <div class="cm-footer-links">
+        <a href="#" class="cm-footer-link">Privacy</a>
+        <a href="#" class="cm-footer-link">Terms</a>
+        <a href="#" class="cm-footer-link">Contact</a>
+        <a href="#" class="cm-footer-link">Blog</a>
+    </div>
+    <div class="cm-footer-copy">© 2025 CoMentor. All rights reserved.</div>
+</div>
+""", unsafe_allow_html=True)
+
+
+def get_score_color(score: int) -> str:
+    if score >= 80:
+        return "#2d8a6e"
+    if score >= 60:
+        return "#3da37f"
+    if score >= 40:
+        return "#d4a017"
+    return "#c44536"
 
 
 def render_report(analysis: dict, transcript_text: str):
     score = analysis["communication_effectiveness_score"]
     verdict = analysis.get("score_verdict", "Competent")
 
-    # Overall score banner
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown(
-            f"""
-<div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color:white; padding:2.25rem; text-align:center; border-radius:20px; box-shadow:var(--shadow);">
-  <div style="font-size:0.85rem; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; opacity:0.95;">
-    Communication Effectiveness
-  </div>
-  <div style="font-size:4.6rem; font-weight:900; line-height:1; margin:0.35rem 0;">
-    {score}
-  </div>
-  <div style="opacity:0.85; font-weight:700;">out of 100</div>
-  <div style="margin-top:1rem; display:inline-block; padding:0.45rem 1.1rem; border-radius:999px; background:rgba(255,255,255,0.18); font-weight:800;">
-    {verdict}
-  </div>
+    # Score hero
+    st.markdown(f"""
+<div class="cm-score-hero">
+    <div class="cm-score-label">Communication Effectiveness Score</div>
+    <div class="cm-score-value">{score}</div>
+    <div class="cm-score-verdict">{verdict}</div>
 </div>
-""",
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
     # Executive summary
-    st.markdown(
-        """
-<div class="section-header">
-  <div class="section-icon">📋</div>
-  <h3 class="section-title">Executive summary</h3>
+    st.markdown(f"""
+<div class="cm-report-section">
+    <div class="cm-report-section-header">
+        <div class="cm-report-section-icon">📋</div>
+        <h3 class="cm-report-section-title">Executive Summary</h3>
+    </div>
+    <div class="cm-exec-summary">{analysis["executive_summary"]}</div>
 </div>
-""",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"""
-<div class="executive-summary">
-  {analysis["executive_summary"]}
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+""", unsafe_allow_html=True)
 
     # Sub-scores
-    st.markdown(
-        """
-<div class="section-header">
-  <div class="section-icon">📊</div>
-  <h3 class="section-title">Performance breakdown</h3>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-    cols = st.columns(5)
     sub = analysis["sub_scores"]
     labels = [
         ("clarity", "Clarity"),
         ("authority", "Authority"),
-        ("audience_adaptation", "Audience fit"),
+        ("audience_adaptation", "Audience Fit"),
         ("persuasion", "Persuasion"),
         ("emotional_regulation", "Composure"),
     ]
-    for c, (k, label) in zip(cols, labels):
-        with c:
-            render_subscore(sub[k], label)
+    
+    st.markdown("""
+<div class="cm-report-section">
+    <div class="cm-report-section-header">
+        <div class="cm-report-section-icon">📊</div>
+        <h3 class="cm-report-section-title">Performance Breakdown</h3>
+    </div>
+    <div class="cm-subscore-grid">
+""", unsafe_allow_html=True)
+    
+    for key, label in labels:
+        val = sub[key]
+        color = get_score_color(val)
+        st.markdown(f"""
+        <div class="cm-subscore">
+            <div class="cm-subscore-value" style="color: {color};">{val}</div>
+            <div class="cm-subscore-label">{label}</div>
+            <div class="cm-subscore-bar">
+                <div class="cm-subscore-fill" style="width: {val}%; background: {color};"></div>
+            </div>
+        </div>
+""", unsafe_allow_html=True)
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Strengths and improvements
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+<div class="cm-report-section">
+    <div class="cm-report-section-header">
+        <div class="cm-report-section-icon">💪</div>
+        <h3 class="cm-report-section-title">Strengths</h3>
+    </div>
+""", unsafe_allow_html=True)
+        for s in analysis["strengths"]:
+            st.markdown(f"""
+    <div class="cm-insight-card">
+        <div class="cm-insight-icon strength">✓</div>
+        <div>
+            <p class="cm-insight-title">{s["title"]}</p>
+            <p class="cm-insight-text">{s["detail"]}</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # Strengths / improvements
-    left, right = st.columns(2)
-    with left:
-        st.markdown(
-            """
-<div class="section-header">
-  <div class="section-icon">💪</div>
-  <h3 class="section-title">Strengths</h3>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-        for s_ in analysis["strengths"]:
-            st.markdown(
-                f"""
-<div class="insight-card">
-  <div class="insight-icon insight-icon-strength">✓</div>
-  <div style="flex:1;">
-    <div class="insight-title">{s_["title"]}</div>
-    <div class="insight-text">{s_["detail"]}</div>
-  </div>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-
-    with right:
-        st.markdown(
-            """
-<div class="section-header">
-  <div class="section-icon">🎯</div>
-  <h3 class="section-title">Areas to improve</h3>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+    with col2:
+        st.markdown("""
+<div class="cm-report-section">
+    <div class="cm-report-section-header">
+        <div class="cm-report-section-icon">🎯</div>
+        <h3 class="cm-report-section-title">Areas to Improve</h3>
+    </div>
+""", unsafe_allow_html=True)
         for imp in analysis["improvements"]:
-            st.markdown(
-                f"""
-<div class="insight-card">
-  <div class="insight-icon insight-icon-improve">↑</div>
-  <div style="flex:1;">
-    <div class="insight-title">{imp["title"]}</div>
-    <div class="insight-text">{imp["detail"]}</div>
-  </div>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"""
+    <div class="cm-insight-card improve">
+        <div class="cm-insight-icon improve">↑</div>
+        <div>
+            <p class="cm-insight-title">{imp["title"]}</p>
+            <p class="cm-insight-text">{imp["detail"]}</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # Key moments
-    st.markdown(
-        """
-<div class="section-header">
-  <div class="section-icon">⚡</div>
-  <h3 class="section-title">Key moments</h3>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+    st.markdown("""
+<div class="cm-report-section">
+    <div class="cm-report-section-header">
+        <div class="cm-report-section-icon">⚡</div>
+        <h3 class="cm-report-section-title">Key Moments</h3>
+    </div>
+""", unsafe_allow_html=True)
+    
     for moment in analysis["key_moments"]:
-        cls = {
-            "positive": "insight-icon-strength",
-            "negative": "insight-icon-improve",
-            "neutral": "insight-icon-moment",
-        }.get(moment["impact"], "insight-icon-moment")
-        icon = {"positive": "↑", "negative": "↓", "neutral": "→"}.get(
-            moment["impact"], "•"
-        )
-        st.markdown(
-            f"""
-<div class="insight-card">
-  <div class="insight-icon {cls}">{icon}</div>
-  <div style="flex:1;">
-    <div class="insight-title">{moment["timestamp"].title()}: {moment["title"]}</div>
-    <div class="insight-text">{moment["insight"]}</div>
-  </div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"""
+    <div class="cm-insight-card moment">
+        <div class="cm-insight-icon moment">•</div>
+        <div>
+            <p class="cm-insight-title">{moment["timestamp"].title()}: {moment["title"]}</p>
+            <p class="cm-insight-text">{moment["insight"]}</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # Cognitive load
-    st.markdown(
-        """
-<div class="section-header">
-  <div class="section-icon">🧠</div>
-  <h3 class="section-title">Cognitive load</h3>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-    def cog_class(level: str) -> str:
-        return {"low": "cog-low", "medium": "cog-medium", "high": "cog-high"}.get(
-            level.lower(), "cog-medium"
-        )
-
     cog = analysis["cognitive_load"]
-    st.markdown(
-        f"""
-<div class="cog-meter">
-  <div class="cog-meter-row">
-    <span class="cog-meter-label">Overall cognitive load</span>
-    <span class="cog-meter-value {cog_class(cog["overall"])}">{cog["overall"].title()}</span>
-  </div>
-  <div class="cog-meter-row">
-    <span class="cog-meter-label">Jargon density</span>
-    <span class="cog-meter-value {cog_class(cog["jargon"])}">{cog["jargon"].title()}</span>
-  </div>
-  <div class="cog-meter-row">
-    <span class="cog-meter-label">Sentence complexity</span>
-    <span class="cog-meter-value {cog_class(cog["complexity"])}">{cog["complexity"].title()}</span>
-  </div>
-  <div class="cog-meter-row">
-    <span class="cog-meter-label">Topic switching</span>
-    <span class="cog-meter-value {cog_class(cog["topic_switches"])}">{cog["topic_switches"].title()}</span>
-  </div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+    
+    def cog_class(level: str) -> str:
+        return {"low": "cm-cog-low", "medium": "cm-cog-medium", "high": "cm-cog-high"}.get(level.lower(), "cm-cog-medium")
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(f"""
+<div class="cm-report-section">
+    <div class="cm-report-section-header">
+        <div class="cm-report-section-icon">🧠</div>
+        <h3 class="cm-report-section-title">Cognitive Load Analysis</h3>
+    </div>
+    <div class="cm-cog-meter">
+        <div class="cm-cog-row">
+            <span class="cm-cog-label">Overall Cognitive Load</span>
+            <span class="cm-cog-badge {cog_class(cog["overall"])}">{cog["overall"].title()}</span>
+        </div>
+        <div class="cm-cog-row">
+            <span class="cm-cog-label">Jargon Density</span>
+            <span class="cm-cog-badge {cog_class(cog["jargon"])}">{cog["jargon"].title()}</span>
+        </div>
+        <div class="cm-cog-row">
+            <span class="cm-cog-label">Sentence Complexity</span>
+            <span class="cm-cog-badge {cog_class(cog["complexity"])}">{cog["complexity"].title()}</span>
+        </div>
+        <div class="cm-cog-row">
+            <span class="cm-cog-label">Topic Switching</span>
+            <span class="cm-cog-badge {cog_class(cog["topic_switches"])}">{cog["topic_switches"].title()}</span>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     # One thing
-    st.markdown(
-        """
-<div class="section-header">
-  <div class="section-icon">🎯</div>
-  <h3 class="section-title">One thing to change</h3>
+    st.markdown(f"""
+<div class="cm-one-thing">
+    <div class="cm-one-thing-label">🎯 Your One Thing to Change</div>
+    <p class="cm-one-thing-text">{analysis["one_thing"]}</p>
 </div>
-""",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"""
-<div class="cm-section" style="border-color: rgba(34,197,94,0.28); background: rgba(34,197,94,0.07);">
-  <div style="font-size:0.78rem; font-weight:900; letter-spacing:0.14em; text-transform:uppercase; color: var(--accent-dark); margin-bottom:0.6rem;">
-    Highest-impact action
-  </div>
-  <div style="font-size:1.2rem; font-weight:900; color: var(--text); line-height:1.5;">
-    {analysis["one_thing"]}
-  </div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+""", unsafe_allow_html=True)
 
-    # Transcript + download
-    with st.expander("📝 View full transcript"):
-        st.markdown(
-            f"""<div class="transcript-box">{transcript_text}</div>""",
-            unsafe_allow_html=True,
-        )
+    # Transcript
+    with st.expander("📝 View Full Transcript"):
+        st.markdown(f'<div class="cm-transcript-box">{transcript_text}</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        f"""
-<div class="report-footer">
-  Analysis generated by CoMentor • {datetime.now().strftime('%B %d, %Y at %H:%M')}
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
+    # Download
+    st.markdown("<br>", unsafe_allow_html=True)
     report_data = {
         "analysis": analysis,
         "transcript": transcript_text,
         "generated_at": datetime.now().isoformat(),
     }
-
     st.download_button(
-        "📥 Download full report (JSON)",
+        "📥 Download Report (JSON)",
         data=json.dumps(report_data, indent=2),
         file_name=f"comentor_report_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
         mime="application/json",
     )
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Main app – landing‑style flow
-# ──────────────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# Main App
+# ══════════════════════════════════════════════════════════════════════════════
 def main():
-    # Sidebar: API key + meeting context
-    with st.sidebar:
-        st.markdown(
-            """
-<div style="padding: 0.5rem 0 0.25rem 0;">
-  <div style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.9rem;">
-    Configuration
-  </div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+    # Initialize session state
+    if "current_plan" not in st.session_state:
+        st.session_state.current_plan = SubscriptionTier.FREE
+    if "analyses_used" not in st.session_state:
+        st.session_state.analyses_used = 0
 
+    # Sidebar for configuration
+    with st.sidebar:
+        st.markdown("### ⚙️ Configuration")
+        
+        # API Key
         env_has_key = bool(os.environ.get("OPENAI_API_KEY"))
         try:
             env_has_key = env_has_key or ("OPENAI_API_KEY" in st.secrets)
@@ -875,244 +1776,176 @@ def main():
             st.text_input(
                 "OpenAI API Key",
                 type="password",
-                help="Not stored. For production, use Streamlit Secrets or environment variables.",
+                help="Your API key is not stored.",
                 key="openai_api_key",
             )
+        else:
+            st.success("✓ API key configured")
 
-        st.markdown(
-            """
-<div style="padding: 1rem 0 0.25rem 0;">
-  <div style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.9rem;">
-    Meeting context
-  </div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+        st.markdown("---")
+        st.markdown("### 📋 Meeting Context")
+        
+        meeting_type = st.selectbox("Meeting Type", [
+            "Board presentation", "Investor pitch", "Sales call",
+            "Team update", "Negotiation", "Client meeting", "Media interview", "Other"
+        ])
+        
+        objective = st.selectbox("Primary Objective", [
+            "Persuade / influence", "Inform / update", "Decide / align",
+            "Build relationship", "Negotiate terms", "Defend position"
+        ])
+        
+        audience = st.selectbox("Audience", [
+            "C-suite / board", "Investors", "Senior leadership",
+            "Clients", "Direct reports", "External stakeholders", "Media / public"
+        ])
+        
+        speaker_role = st.text_input("Your Role", placeholder="e.g., CEO, Founder")
 
-        meeting_type = st.selectbox(
-            "Meeting type",
-            [
-                "Board presentation",
-                "Investor pitch",
-                "Sales call",
-                "Team update",
-                "Negotiation",
-                "Client meeting",
-                "Media interview",
-                "Other",
-            ],
-        )
-        objective = st.selectbox(
-            "Primary objective",
-            [
-                "Persuade / influence",
-                "Inform / update",
-                "Decide / align",
-                "Build relationship",
-                "Negotiate terms",
-                "Defend position",
-            ],
-        )
-        audience = st.selectbox(
-            "Audience",
-            [
-                "C-suite / board",
-                "Investors",
-                "Senior leadership",
-                "Clients",
-                "Direct reports",
-                "External stakeholders",
-                "Media / public",
-            ],
-        )
-        speaker_role = st.text_input(
-            "Your role",
-            placeholder="e.g., CEO, Founder, Managing Director",
-        )
+        st.markdown("---")
+        plan = PLANS[st.session_state.current_plan]
+        st.markdown(f"**Current Plan:** {plan['name']}")
+        if plan['analyses_per_month'] > 0:
+            st.markdown(f"**Analyses Used:** {st.session_state.analyses_used}/{plan['analyses_per_month']}")
 
-    # Hero – always visible as landing top section
+    # Main content
+    render_navigation()
     render_hero()
+    render_features()
+    render_how_it_works()
+    
+    # Demo section
+    st.markdown('<div id="demo">', unsafe_allow_html=True)
+    st.markdown("""
+<div class="cm-section-header">
+    <h2>Try it now</h2>
+    <p>Upload a recording or record yourself to see CoMentor in action</p>
+</div>
+""", unsafe_allow_html=True)
 
     client = init_openai_client()
+    
     if not client:
-        st.markdown(
-            """
-<div class="cm-section" style="text-align:center;">
-  <div style="font-size:2.25rem; margin-bottom:0.5rem;">🔐</div>
-  <h3 style="margin:0; font-weight:900; letter-spacing:-0.02em;">
-    Add your OpenAI API key to start
-  </h3>
-  <p style="color: var(--muted); margin-top:0.6rem; line-height:1.6;">
-    Use the sidebar for local testing, or configure environment variables / Streamlit Secrets for deployment.
-  </p>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-        return
-
-    # If we already have a completed analysis, show report-first (post-landing)
-    if st.session_state.get("show_results") and "analysis" in st.session_state:
-        render_report(
-            st.session_state["analysis"],
-            st.session_state.get("transcript", ""),
-        )
-        if st.button("← Analyze another conversation", use_container_width=True):
-            st.session_state["show_results"] = False
-            st.session_state.pop("analysis", None)
-            st.session_state.pop("transcript", None)
-            st.rerun()
-        return
-
-    # Landing “Get started” section: record/upload tabs
-    st.markdown('<div class="cm-section">', unsafe_allow_html=True)
-    tab_record, tab_upload = st.tabs(["🎙️ Record now", "📁 Upload recording"])
-
-    meeting_context = {
-        "meeting_type": meeting_type,
-        "objective": objective,
-        "audience": audience,
-        "speaker_role": speaker_role or "Executive",
-    }
-
-    # RECORD TAB
-    with tab_record:
-        st.markdown(
-            """
-<div class="cm-strip">
-  <h3>Record a short segment</h3>
-  <p>Capture 2–5 minutes of a live pitch, update, or practice run. Add context in the sidebar for sharper coaching.</p>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-
-        try:
-            audio_value = st.audio_input("Record your audio", key="audio_recorder")
-
-            if audio_value:
-                st.audio(audio_value)
-
-                if st.button(
-                    "Analyze recording", key="analyze_recorded", use_container_width=True
-                ):
-                    with st.status(
-                        "Analyzing your communication...", expanded=True
-                    ) as status:
-                        with tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".wav"
-                        ) as tmp:
-                            tmp.write(audio_value.getvalue())
-                            tmp_path = tmp.name
-
-                        try:
-                            status.write("🎙️ Transcribing with Whisper…")
-                            transcript = transcribe_audio(client, tmp_path)
-                            transcript_text = transcript.text
-
-                            status.write("🧠 Running communication analysis…")
-                            analysis = analyze_communication(
-                                client, transcript_text, meeting_context
-                            )
-
-                            st.session_state["analysis"] = analysis
-                            st.session_state["transcript"] = transcript_text
-                            st.session_state["show_results"] = True
-
-                            status.update(
-                                label="Analysis complete – scroll up for your report.",
-                                state="complete",
-                            )
-                            st.rerun()
-                        finally:
-                            os.unlink(tmp_path)
-
-        except Exception:
-            st.info(
-                "Recording requires a recent Streamlit version (1.33+). If this does not appear, use the Upload tab instead."
-            )
-
-    # UPLOAD TAB
-    with tab_upload:
-        st.markdown(
-            """
-<div class="cm-strip">
-  <h3>Upload a recording</h3>
-  <p>Upload audio or video of a meeting, pitch, or conversation. Shorter clips run faster and cost less.</p>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-        uploaded = st.file_uploader(
-            "Drag and drop your recording",
-            type=["mp3", "mp4", "wav", "m4a", "webm", "mpeg4", "ogg"],
-            help="Supported formats: MP3, MP4, WAV, M4A, WebM, OGG",
-        )
-
-        if uploaded:
-            size_mb = uploaded.size / 1024 / 1024
-            st.markdown(
-                f"""
-<div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 0.9rem;border-radius:999px;border:1px solid var(--border);background:var(--soft);font-weight:800;color:var(--text);">
-  ✓ {uploaded.name} ({size_mb:.1f} MB)
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-            st.audio(uploaded)
-
-            if st.button(
-                "Analyze upload", key="analyze_uploaded", use_container_width=True
-            ):
-                with st.status(
-                    "Analyzing your communication...", expanded=True
-                ) as status:
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=os.path.splitext(uploaded.name)[1]
-                    ) as tmp:
-                        tmp.write(uploaded.getvalue())
-                        tmp_path = tmp.name
-
-                    try:
-                        status.write("📝 Transcribing with Whisper…")
-                        transcript = transcribe_audio(client, tmp_path)
-                        transcript_text = transcript.text
-                        status.write(
-                            f"✓ Transcribed {len(transcript_text.split())} words."
-                        )
-
-                        status.write("🧠 Running communication analysis…")
-                        analysis = analyze_communication(
-                            client, transcript_text, meeting_context
-                        )
-
-                        st.session_state["analysis"] = analysis
-                        st.session_state["transcript"] = transcript_text
-                        st.session_state["show_results"] = True
-
-                        status.update(
-                            label="Analysis complete – scroll up for your report.",
-                            state="complete",
-                        )
-                        st.rerun()
-
-                    except Exception as e:
-                        status.update(label="Analysis failed", state="error")
-                        st.error(f"Analysis failed: {e}")
-                    finally:
-                        os.unlink(tmp_path)
+        st.warning("🔐 Add your OpenAI API key in the sidebar to start analyzing.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        # Check if showing results
+        if st.session_state.get("show_results") and "analysis" in st.session_state:
+            render_report(st.session_state["analysis"], st.session_state.get("transcript", ""))
+            if st.button("← Analyze Another", use_container_width=True):
+                st.session_state["show_results"] = False
+                st.session_state.pop("analysis", None)
+                st.session_state.pop("transcript", None)
+                st.rerun()
         else:
-            st.markdown(
-                """
-<div style="text-align: center; padding: 1.5rem; color: var(--muted);">
-  <p style="margin:0;">Upload a recording of a meeting, board update, investor pitch, or practice run to generate an executive-grade communication report.</p>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
+            # Upload/Record tabs
+            tab_upload, tab_record = st.tabs(["📁 Upload Recording", "🎙️ Record Now"])
+            
+            meeting_context = {
+                "meeting_type": meeting_type,
+                "objective": objective,
+                "audience": audience,
+                "speaker_role": speaker_role or "Executive",
+            }
 
-    st.markdown("</div>", unsafe_allow_html=True)
+            with tab_upload:
+                st.markdown("""
+<div class="cm-tool-card">
+    <div class="cm-tool-header">
+        <div class="cm-tool-icon">📁</div>
+        <div>
+            <h3 class="cm-tool-title">Upload a Recording</h3>
+            <p class="cm-tool-subtitle">MP3, MP4, WAV, M4A, WebM, OGG • Max 30 min for Pro</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+                
+                uploaded = st.file_uploader(
+                    "Drop your file here",
+                    type=["mp3", "mp4", "wav", "m4a", "webm", "ogg"],
+                    label_visibility="collapsed"
+                )
+                
+                if uploaded:
+                    st.audio(uploaded)
+                    if st.button("✨ Analyze Communication", key="analyze_upload", use_container_width=True):
+                        with st.status("Analyzing...", expanded=True) as status:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded.name)[1]) as tmp:
+                                tmp.write(uploaded.getvalue())
+                                tmp_path = tmp.name
+                            
+                            try:
+                                status.write("🎙️ Transcribing with Whisper...")
+                                transcript = transcribe_audio(client, tmp_path)
+                                
+                                status.write("🧠 Running communication analysis...")
+                                analysis = analyze_communication(client, transcript.text, meeting_context)
+                                
+                                st.session_state["analysis"] = analysis
+                                st.session_state["transcript"] = transcript.text
+                                st.session_state["show_results"] = True
+                                st.session_state.analyses_used += 1
+                                
+                                status.update(label="✓ Analysis complete!", state="complete")
+                                st.rerun()
+                            except Exception as e:
+                                status.update(label="Analysis failed", state="error")
+                                st.error(f"Error: {e}")
+                            finally:
+                                os.unlink(tmp_path)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with tab_record:
+                st.markdown("""
+<div class="cm-tool-card">
+    <div class="cm-tool-header">
+        <div class="cm-tool-icon">🎙️</div>
+        <div>
+            <h3 class="cm-tool-title">Record Now</h3>
+            <p class="cm-tool-subtitle">Record directly in your browser</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+                
+                try:
+                    audio_value = st.audio_input("Click to record", key="audio_recorder")
+                    
+                    if audio_value:
+                        st.audio(audio_value)
+                        if st.button("✨ Analyze Recording", key="analyze_record", use_container_width=True):
+                            with st.status("Analyzing...", expanded=True) as status:
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                                    tmp.write(audio_value.getvalue())
+                                    tmp_path = tmp.name
+                                
+                                try:
+                                    status.write("🎙️ Transcribing...")
+                                    transcript = transcribe_audio(client, tmp_path)
+                                    
+                                    status.write("🧠 Analyzing...")
+                                    analysis = analyze_communication(client, transcript.text, meeting_context)
+                                    
+                                    st.session_state["analysis"] = analysis
+                                    st.session_state["transcript"] = transcript.text
+                                    st.session_state["show_results"] = True
+                                    st.session_state.analyses_used += 1
+                                    
+                                    status.update(label="✓ Complete!", state="complete")
+                                    st.rerun()
+                                finally:
+                                    os.unlink(tmp_path)
+                except Exception:
+                    st.info("Recording requires Streamlit 1.33+. Please use the Upload tab.")
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    render_pricing()
+    render_testimonials()
+    render_cta()
+    render_footer()
 
 
 if __name__ == "__main__":
