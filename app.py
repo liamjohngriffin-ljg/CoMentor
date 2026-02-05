@@ -722,12 +722,12 @@ if (window.Streamlit) {
 """
 
 
-def init_openai_client():
-    """Initialize OpenAI client with API key."""
-    api_key = os.environ.get('OPENAI_API_KEY') or st.session_state.get('openai_api_key')
-    if api_key:
-        return OpenAI(api_key=api_key)
-    return None
+api_key = (
+    os.environ.get("OPENAI_API_KEY")
+    or st.secrets.get("OPENAI_API_KEY", None)
+    or st.session_state.get("openai_api_key")
+)
+
 
 
 def transcribe_audio(client, audio_file_path):
