@@ -4,7 +4,8 @@ CoMentor - Executive Communication Intelligence
 AI-powered communication analysis for high-stakes conversations
 Record or upload meetings to get actionable insights
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 import tempfile
 import os
