@@ -17,6 +17,8 @@ from openai import OpenAI
 from datetime import datetime
 import base64
 import textwrap
+def html(s: str):
+    st.markdown(textwrap.dedent(s), unsafe_allow_html=True)
 
 
 
