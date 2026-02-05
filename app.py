@@ -22,522 +22,255 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Premium CSS styling
+# Clean landing-page CSS (Grammarly-inspired: minimal, airy, green accent)
 st.markdown("""
 <style>
-    /* Import fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    /* Global styles */
-    .stApp {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Header styling */
-    .hero-header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-        padding: 2.5rem 2rem;
-        border-radius: 16px;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .hero-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    
-    .brand-logo {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #ffffff;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    
-    .brand-logo-icon {
-        width: 44px;
-        height: 44px;
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-    }
-    
-    .brand-tagline {
-        font-size: 1.1rem;
-        color: rgba(255,255,255,0.7);
-        font-weight: 400;
-    }
-    
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: #f1f5f9;
-        padding: 8px;
-        border-radius: 12px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-weight: 500;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    
-    /* Recording section */
-    .record-container {
-        background: linear-gradient(180deg, #fafbfc 0%, #f1f5f9 100%);
-        border: 2px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 2.5rem;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    
-    .record-btn-container {
-        margin: 1.5rem 0;
-    }
-    
-    .recording-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-    
-    .status-ready {
-        background: #e0f2fe;
-        color: #0369a1;
-    }
-    
-    .status-recording {
-        background: #fee2e2;
-        color: #dc2626;
-        animation: pulse 1.5s infinite;
-    }
-    
-    .status-complete {
-        background: #d1fae5;
-        color: #059669;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    
-    .pulse-dot {
-        width: 10px;
-        height: 10px;
-        background: #dc2626;
-        border-radius: 50%;
-        animation: pulse-dot 1s infinite;
-    }
-    
-    @keyframes pulse-dot {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.2); }
-    }
-    
-    /* Upload area */
-    .upload-zone {
-        border: 2px dashed #cbd5e1;
-        border-radius: 16px;
-        padding: 3rem 2rem;
-        text-align: center;
-        background: linear-gradient(180deg, #fafbfc 0%, #f1f5f9 100%);
-        transition: all 0.3s ease;
-    }
-    
-    .upload-zone:hover {
-        border-color: #3b82f6;
-        background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
-    }
-    
-    /* Score card - main CES */
-    .ces-container {
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-        border-radius: 20px;
-        padding: 2.5rem;
-        text-align: center;
-        color: white;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
-    }
-    
-    .ces-container::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    }
-    
-    .ces-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        opacity: 0.9;
-        margin-bottom: 0.5rem;
-    }
-    
-    .ces-score {
-        font-size: 5rem;
-        font-weight: 700;
-        line-height: 1;
-        margin: 0.5rem 0;
-        text-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    }
-    
-    .ces-max {
-        font-size: 1.25rem;
-        opacity: 0.8;
-    }
-    
-    .ces-verdict {
-        font-size: 1.1rem;
-        font-weight: 500;
-        margin-top: 1rem;
-        padding: 0.5rem 1.5rem;
-        background: rgba(255,255,255,0.2);
-        border-radius: 30px;
-        display: inline-block;
-    }
-    
-    /* Sub-score cards */
-    .subscore-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        border: 1px solid #f0f0f5;
-        transition: all 0.3s ease;
-    }
-    
-    .subscore-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    }
-    
-    .subscore-value {
-        font-size: 2.25rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
-    }
-    
-    .subscore-label {
-        font-size: 0.875rem;
-        color: #6b7280;
-        font-weight: 500;
-    }
-    
-    .subscore-bar {
-        height: 6px;
-        background: #e5e7eb;
-        border-radius: 3px;
-        margin-top: 1rem;
-        overflow: hidden;
-    }
-    
-    .subscore-fill {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 1s ease-out;
-    }
-    
-    /* Executive summary */
-    .executive-summary {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-left: 4px solid #3b82f6;
-        padding: 1.5rem 2rem;
-        border-radius: 0 12px 12px 0;
-        font-size: 1.1rem;
-        line-height: 1.7;
-        color: #334155;
-    }
-    
-    /* Insight cards */
-    .insight-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        border: 1px solid #f0f0f5;
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    .insight-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        flex-shrink: 0;
-    }
-    
-    .insight-icon-strength {
-        background: #d1fae5;
-        color: #059669;
-    }
-    
-    .insight-icon-improve {
-        background: #fef3c7;
-        color: #d97706;
-    }
-    
-    .insight-icon-moment {
-        background: #dbeafe;
-        color: #2563eb;
-    }
-    
-    .insight-content {
-        flex: 1;
-    }
-    
-    .insight-title {
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 0.25rem;
-    }
-    
-    .insight-text {
-        font-size: 0.925rem;
-        color: #4b5563;
-        line-height: 1.5;
-    }
-    
-    /* One thing to change - hero action */
-    .action-hero {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border: 2px solid #f59e0b;
-        border-radius: 16px;
-        padding: 2rem;
-        text-align: center;
-    }
-    
-    .action-hero-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #92400e;
-        margin-bottom: 0.75rem;
-    }
-    
-    .action-hero-text {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #78350f;
-        line-height: 1.5;
-    }
-    
-    /* Section headers */
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin: 2rem 0 1.25rem 0;
-    }
-    
-    .section-icon {
-        width: 32px;
-        height: 32px;
-        background: #f3f4f6;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #111827;
-        margin: 0;
-    }
-    
-    /* Cognitive load meter */
-    .cog-meter {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        border: 1px solid #f0f0f5;
-    }
-    
-    .cog-meter-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f3f4f6;
-    }
-    
-    .cog-meter-row:last-child {
-        border-bottom: none;
-    }
-    
-    .cog-meter-label {
-        font-size: 0.925rem;
-        color: #4b5563;
-    }
-    
-    .cog-meter-value {
-        font-weight: 600;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.875rem;
-    }
-    
-    .cog-low { background: #d1fae5; color: #059669; }
-    .cog-medium { background: #fef3c7; color: #d97706; }
-    .cog-high { background: #fee2e2; color: #dc2626; }
-    
-    /* Report footer */
-    .report-footer {
-        margin-top: 3rem;
-        padding-top: 2rem;
-        border-top: 1px solid #e5e7eb;
-        text-align: center;
-        color: #9ca3af;
-        font-size: 0.875rem;
-    }
-    
-    /* Loading animation */
-    .loading-container {
-        text-align: center;
-        padding: 3rem;
-    }
-    
-    .loading-spinner {
-        width: 60px;
-        height: 60px;
-        border: 4px solid #f3f4f6;
-        border-top: 4px solid #3b82f6;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1.5rem;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .loading-text {
-        font-size: 1.1rem;
-        color: #4b5563;
-        font-weight: 500;
-    }
-    
-    .loading-subtext {
-        font-size: 0.925rem;
-        color: #9ca3af;
-        margin-top: 0.5rem;
-    }
-    
-    /* Transcript box */
-    .transcript-box {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 1.5rem;
-        font-family: 'SF Mono', 'Monaco', monospace;
-        font-size: 0.875rem;
-        line-height: 1.7;
-        color: #374151;
-        max-height: 400px;
-        overflow-y: auto;
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        font-size: 1rem;
-        font-weight: 600;
-        border-radius: 10px;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-    }
-    
-    /* Status badge */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    
-    .status-success {
-        background: #d1fae5;
-        color: #059669;
-    }
-    
-    /* Audio recorder custom styling */
-    .audio-recorder-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-    }
-    
-    /* Timer display */
-    .timer-display {
-        font-size: 2.5rem;
-        font-weight: 600;
-        font-family: 'SF Mono', 'Monaco', monospace;
-        color: #1f2937;
-        margin: 1rem 0;
-    }
-    
-    .timer-recording {
-        color: #dc2626;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --soft: #f8fafc;
+  --accent: #22c55e;      /* clean green */
+  --accent-dark: #16a34a;
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 6px 18px rgba(15, 23, 42, 0.06);
+  --radius: 18px;
+}
+
+.stApp {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Hide Streamlit chrome */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* Constrain content width like a marketing site */
+.block-container{
+  max-width: 1120px;
+  padding-top: 2.0rem;
+  padding-bottom: 4rem;
+}
+
+/* Sidebar: lighter, cleaner */
+section[data-testid="stSidebar"]{
+  background: #fbfdff;
+  border-right: 1px solid var(--border);
+}
+section[data-testid="stSidebar"] .stMarkdown{
+  color: var(--text);
+}
+section[data-testid="stSidebar"] label, 
+section[data-testid="stSidebar"] span {
+  color: var(--muted) !important;
+}
+
+/* Inputs */
+.stSelectbox, .stTextInput, .stFileUploader {
+  border-radius: 12px;
+}
+
+/* Tabs: minimal pill style */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 10px;
+  background: transparent;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+.stTabs [data-baseweb="tab"] {
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+}
+.stTabs [aria-selected="true"] {
+  background: rgba(34, 197, 94, 0.10);
+  color: var(--text);
+}
+
+/* Buttons: green primary like Grammarly CTA */
+.stButton > button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.stButton > button:hover {
+  transform: translateY(-1px);
+  background: var(--accent-dark);
+  box-shadow: var(--shadow);
+}
+
+/* Secondary button look (we’ll use st.button with custom class via markdown) */
+.cm-secondary {
+  display:inline-block;
+  border: 1px solid var(--border);
+  background: white;
+  color: var(--text);
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+/* Hero */
+.cm-hero {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.5rem 2.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.cm-nav {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom: 1.75rem;
+}
+.cm-brand {
+  display:flex;
+  align-items:center;
+  gap: 0.75rem;
+}
+.cm-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(34,197,94,0.14);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+.cm-brandname {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.cm-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: rgba(34,197,94,0.10);
+  border: 1px solid rgba(34,197,94,0.18);
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* Hero grid */
+.cm-hero-grid {
+  display:grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1.75rem;
+}
+@media (max-width: 900px){
+  .cm-hero-grid { grid-template-columns: 1fr; }
+}
+.cm-h1 {
+  font-size: 2.65rem;
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.75rem 0;
+}
+.cm-sub {
+  font-size: 1.1rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 1.25rem 0;
+}
+.cm-cta-row {
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.cm-proof {
+  margin-top: 1.0rem;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+.cm-proof strong { color: var(--text); }
+
+/* Feature cards */
+.cm-cards {
+  margin-top: 1.75rem;
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 900px){
+  .cm-cards { grid-template-columns: 1fr; }
+}
+.cm-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.15rem 1.15rem;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+.cm-card-title{
+  font-weight: 800;
+  margin: 0 0 0.35rem 0;
+  letter-spacing: -0.01em;
+}
+.cm-card-text{
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+.cm-mini{
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* Section wrapper */
+.cm-section {
+  margin-top: 1.75rem;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: var(--radius);
+  padding: 1.5rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Keep your report components working, but soften them */
+.ces-container {
+  border-radius: 22px !important;
+  box-shadow: var(--shadow) !important;
+}
+.subscore-card, .insight-card, .cog-meter {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05) !important;
+}
+.executive-summary {
+  border-left: 4px solid var(--accent) !important;
+}
+
+/* Muted divider */
+.cm-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1.25rem 0;
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 # Audio recorder JavaScript component
 AUDIO_RECORDER_HTML = """
@@ -852,16 +585,65 @@ def get_score_color(score):
 
 
 def render_header():
-    """Render the hero header."""
+    """Render a clean, landing-page hero (marketing style)."""
     st.markdown("""
-    <div class="hero-header">
-        <div class="brand-logo">
-            <div class="brand-logo-icon">◐</div>
-            CoMentor
+    <div class="cm-hero">
+      <div class="cm-nav">
+        <div class="cm-brand">
+          <div class="cm-logo">◐</div>
+          <div>
+            <div class="cm-brandname">CoMentor</div>
+            <div class="cm-mini">Executive Communication Intelligence</div>
+          </div>
         </div>
-        <div class="brand-tagline">Executive Communication Intelligence</div>
+        <div class="cm-badge">Private • Evidence-based • Actionable</div>
+      </div>
+
+      <div class="cm-hero-grid">
+        <div>
+          <h1 class="cm-h1">Say it with clarity, authority, and impact.</h1>
+          <p class="cm-sub">
+            Upload or record a high-stakes conversation and get a coaching-grade analysis:
+            what worked, what didn’t, and the single highest-leverage change for next time.
+          </p>
+
+          <div class="cm-cta-row">
+            <!-- Primary CTA is your tab + record button below; this is just visual framing -->
+            <span class="cm-mini">Tip: Add context in the left panel for sharper feedback.</span>
+          </div>
+
+          <div class="cm-proof">
+            <strong>Outputs:</strong> Effectiveness score, strengths, fixes, key moments, cognitive load, and “ONE thing” action.
+          </div>
+        </div>
+
+        <div>
+          <div class="cm-card">
+            <p class="cm-card-title">What you’ll get</p>
+            <p class="cm-card-text">A structured report you can act on immediately—no fluff.</p>
+            <div class="cm-divider"></div>
+            <p class="cm-card-text"><strong>Best for:</strong> board updates, investor pitches, negotiations, client meetings.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-cards">
+        <div class="cm-card">
+          <p class="cm-card-title">Executive-grade clarity</p>
+          <p class="cm-card-text">Flags vague sections and gives a rewrite-level fix you can reuse.</p>
+        </div>
+        <div class="cm-card">
+          <p class="cm-card-title">Authority & persuasion</p>
+          <p class="cm-card-text">Identifies where you lose leverage—and what to say instead.</p>
+        </div>
+        <div class="cm-card">
+          <p class="cm-card-title">Cognitive load control</p>
+          <p class="cm-card-text">Detects jargon/complexity spikes that make audiences tune out.</p>
+        </div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
+
 
 
 def render_subscore(score, label):
